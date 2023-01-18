@@ -1,0 +1,16 @@
+Logging in:
+  - ID
+  - Key
+
+Recipient:
+  - Input ID -- if it exists, chat is created with the ID
+             -- as the recipient of the chat.
+
+Profile:
+  - ID
+  - Key
+  - Avatar
+
+Chats:
+  -- only text chat is available,text can also include links. 
+  -- recipients will be stored, and their chats too.
