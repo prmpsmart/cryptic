@@ -1,6 +1,6 @@
 {
     "python.pythonPath": "C:\\Python\\Python39\\python.exe",
     "python.analysis.extraPaths": [
-        "../prmp_websockets/prmp_websockets",
+        "../prmp_qt",
     ],
 }

@@ -458,13 +458,13 @@ class PRMP_WebsocketProtocol:
             self.keep_alive = False
             raise
 
-    def send(self, data: bytes):
+    def send(self, data: bytes) -> int:
         try:
             return self.socket.send(data)
         except:
             self.keep_alive = False
 
-    def send_payload(self, fin: bool, message: bytes, opcode=OPCODE_TEXT):
+    def send_payload(self, fin: bool, message: bytes, opcode=OPCODE_TEXT) -> int:
         b1 = 0
         b2 = 0
         if fin is False:
@@ -498,7 +498,7 @@ class PRMP_WebsocketProtocol:
 
         return self.send(payload + message)
 
-    def send_message(self, message: DATA, fragment: bool = False):
+    def send_message(self, message: DATA, fragment: bool = False) -> int:
         """
         Send websocket data frame to the client.
 
@@ -530,7 +530,7 @@ class PRMP_WebsocketProtocol:
         """
         self.send_payload(True, data, opcode=OPCODE_STREAM)
 
-    def send_fragment_end(self, data):
+    def send_fragment_end(self, data) -> int:
         """
         see send_fragment_end()
 
@@ -572,7 +572,7 @@ class PRMP_WebsocketProtocol:
                 data = self.recv(16384)
                 if not data:
                     raise Exception("remote socket closed")
-                
+
                 for d in data:
                     self._parseMessage(d)
 
@@ -617,7 +617,7 @@ class PRMP_WebSocketHandler(PRMP_WebsocketProtocol, socketserver.StreamRequestHa
         socketserver.StreamRequestHandler.__init__(self, socket, addr, server)
 
         self.server: PRMP_WebSocketServer
-        
+
     def setup(self):
         self.socket = self.request
         super().setup()
@@ -685,7 +685,7 @@ class PRMP_WebSocketServer(socketserver.ThreadingTCPServer):
     def __init__(
         self,
         server_address: tuple[str, int],
-        RequestHandlerClass: "PRMP_WebSocketHandler"=None,
+        RequestHandlerClass: "PRMP_WebSocketHandler" = None,
         key: str = "",
         cert: str = "",
         version=ssl.PROTOCOL_TLSv1,
@@ -1216,13 +1216,13 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
             self.valid_client = True
             self.handshaked = True
             self.on_connected()
-            
+
         except Exception as e:
             if self.socket:
                 self.socket.close()
                 self.socket = None
             raise
-        
+
     def abort(self):
         """
         Low-level asynchronous abort, wakes up other threads that are waiting in recv_*
@@ -1250,7 +1250,7 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
             self.handle()
 
         self.started = True
-    
-    def close(self, reason: str=''):
+
+    def close(self, reason: str = ""):
         self.send_close(reason=reason)
         self.shutdown()

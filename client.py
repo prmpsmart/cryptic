@@ -1,125 +1,73 @@
-from wschat.client import *
+from wschat.ws_client import *
+from commons import *
+import os
 
-class AmeboUserClient(PRMP_WebSocketClient):
-    instance: "AmeboUserClient" = None
 
-    def __init__(self):
-        super().__init__()
+class CrypticChat:
+    def __init__(self, id: str) -> None:
+        self.id = id
+        self.chats: list[Json] = []
 
-        assert not AmeboUserClient.instance
+        # Json keys for CrypticChat
+        #   recipient
+        #   sender
+        #   text
+        #   datetime
 
-        AmeboUserClient.instance = self
+        self
 
-        self.actions: dict[str, Action] = {}
-        self.signin_args = ()
 
-    def add_receiver(self, action: str, receiver: R):
-        if action not in self.actions:
-            self.actions[action] = Action(action)
+class CrypticClientUser(CrypticUser):
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
 
-        action: Action
-        action = self.actions[action]
-        action.add_receiver(receiver)
+        self.cryptics: list[CrypticChat] = []
 
-    def remove_receiver(self, action: str, receiver: R):
-        if action in self.actions:
-            action: Action = self.actions[action]
-            action.remove_receiver(receiver)
 
-    @classmethod
-    def get_client(cls):
-        if not cls.instance:
-            cls.instance = cls()
-        return cls.instance
-
-    def start_client(self, threaded: bool = True):
-        if self.started:
-            return
-
-        try:
-            self.connect(url=URI)
-            self.start(threaded)
-        except ConnectionRefusedError:
-            ...
+class CrypticClient(Client):
+    URI = "ws://localhost:8000"
 
     def on_connected(self):
-        if user := AmeboClientData.user():
-            print(user)
-            if not user.status:
-                AmeboUserClient.get_client().signin(user.unique_id, user.password)
+        print("Connected to Server")
 
-    def on_message(self) -> Json:
-        data = self.data
+        if user := CrypticData.user():
+            if not user.signed_in:
+                self.get_client().signin(user.id, user.key)
 
-        try:
-            _json = Json.from_str(data)
-            action = self.actions.get(_json.action.lower())
-            if action:
-                action.trigger(_json)
-
-        except json.JSONDecodeError as jde:
-            print(f"Message Error, {data}")
-
-    def on_closed(self):
-        if user := AmeboClientData.user():
-            user.status = False
-            user.last_seen = TIME()
-
-    def send_json(self, data: Json) -> Json:
-        _json = data.to_str()
-        return self.send_message(_json)
-
-    def send_action(self, action: str, **kwargs):
-        json = Json(action=action, **kwargs)
-        self.send_json(json)
-
-    def signin(self, unique_id: str, password: int):
-        self.send_action(action="signin", unique_id=unique_id, password=password)
-        self.signin_args = unique_id, password
-        self.add_receiver("signin", self.signin_response)
+    def signin(self, id: str, key: str):
+        self.signed_in = False
+        self.send_action(action="signin", id=id, key=key)
+        self.signin_args = id, key
+        self.receive_action("signin", self.signin_response)
 
     def signin_response(self, json: Json):
-        if json.response == 200 and self.signin_args:
+        if "success" in json.response.lower() and self.signin_args:
             data = dict(
                 id=json.id,
-                created_at=json.created_at,
-                display_name=json.display_name,
-                description=json.description,
+                key=json.key,
                 avatar=json.avatar,
-                unique_id=json.unique_id,
-                password=json.password,
-                status=json.status,
             )
-            if user := AmeboClientData.user():
+            self.signed_in = True
+
+            if user := CrypticData.user():
                 user.__dict__.update(data)
+
             else:
-                user = AmeboUser(**data)
-                AmeboClientData.USER = user
-            AmeboClientData.save()
+                user = CrypticClientUser(**data)
+                CrypticData.DATA = user
 
-    def signup(self, unique_id: str, password: int):
-        self.send_action(action="signup", unique_id=unique_id, password=password)
+            CrypticData.save()
 
-    def edit_user_profile_info(self, **kwargs):
-        self.send_action("edit_user_profile_info", **kwargs)
+    def signup(self, id: str, key: int):
+        self.send_action(action="signup", id=id, key=key)
 
-if __name__ == "__main__":
-    a = AmeboUserClient()
-    s = a.start_client()
-    c = 0
+    def edit_profile(self, **kwargs):
+        self.send_action("edit_profile", **kwargs)
 
-    def close_sig_handler(signal: signal.Signals, frame):
-        global c
-        # os.system(f'{os.sys.executable} {os.sys.argv[0]}')
-        a.send_json(Json(action="signin"))
-        c += 1
 
-        if c == 5:
-            a.send_close(reason="Test")
-            a.shutdown()
-            exit()
+class CrypticData(Data):
+    DB_FILE = os.path.join(os.path.dirname(__file__), "cryptic.dump")
 
-    signal.signal(signal.SIGINT, close_sig_handler)
-
-    while 1:
-        ...
+    @classmethod
+    def user(cls) -> CrypticClientUser:
+        return cls.data()

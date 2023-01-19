@@ -1,2 +1,2 @@
-from .client import *
-from .server import *
+from .ws_client import *
+from .ws_server import *

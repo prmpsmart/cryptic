@@ -1,5 +1,6 @@
-from .commons import *
+from .ws_commons import *
 
+__all__ = ["Client", "Action", "Json", "Data"]
 
 
 class Action:
@@ -28,8 +29,10 @@ class Action:
     def empty(self):
         return self.receivers == []
 
+
 class Client(PRMP_WebSocketClient):
     instance: "Client" = None
+    URI = ""
 
     def __init__(self):
         super().__init__()
@@ -40,6 +43,7 @@ class Client(PRMP_WebSocketClient):
 
         self.actions: dict[str, Action] = {}
         self.signin_args = ()
+        self.signed_in = False
 
     def add_receiver(self, action: str, receiver: Json_Receiver):
         if action not in self.actions:
@@ -64,16 +68,11 @@ class Client(PRMP_WebSocketClient):
             return
 
         try:
-            self.connect(url=URI)
+            self.connect(url=self.URI)
             self.start(threaded)
+
         except ConnectionRefusedError:
             ...
-
-    def on_connected(self):
-        if user := AmeboClientData.user():
-            print(user)
-            if not user.status:
-                Client.get_client().signin(user.unique_id, user.password)
 
     def on_message(self) -> Json:
         data = self.data
@@ -87,11 +86,6 @@ class Client(PRMP_WebSocketClient):
         except json.JSONDecodeError as jde:
             print(f"Message Error, {data}")
 
-    def on_closed(self):
-        if user := AmeboClientData.user():
-            user.status = False
-            user.last_seen = TIME()
-
     def send_json(self, data: Json) -> Json:
         _json = data.to_str()
         return self.send_message(_json)
@@ -100,32 +94,4 @@ class Client(PRMP_WebSocketClient):
         json = Json(action=action, **kwargs)
         self.send_json(json)
 
-    def signin(self, unique_id: str, password: int):
-        self.send_action(action="signin", unique_id=unique_id, password=password)
-        self.signin_args = unique_id, password
-        self.add_receiver("signin", self.signin_response)
-
-    def signin_response(self, json: Json):
-        if json.response == 200 and self.signin_args:
-            data = dict(
-                id=json.id,
-                created_at=json.created_at,
-                display_name=json.display_name,
-                description=json.description,
-                avatar=json.avatar,
-                unique_id=json.unique_id,
-                password=json.password,
-                status=json.status,
-            )
-            if user := AmeboClientData.user():
-                user.__dict__.update(data)
-            else:
-                user = AmeboUser(**data)
-                AmeboClientData.USER = user
-            AmeboClientData.save()
-
-    def signup(self, unique_id: str, password: int):
-        self.send_action(action="signup", unique_id=unique_id, password=password)
-
-    def edit_user_profile_info(self, **kwargs):
-        self.send_action("edit_user_profile_info", **kwargs)
+    receive_action = add_receiver

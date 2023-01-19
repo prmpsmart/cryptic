@@ -1,5 +1,5 @@
 from typing import *
-import datetime, time, json, site, signal
+import datetime, time, json, os, pickle
 from .prmp_websockets import *
 
 
@@ -8,9 +8,9 @@ def GET_BY_ATTR(
     validator: Callable[[Any], Any] = None,
     **attrs_values: dict[str, Any]
 ):
-    '''
+    """
     return object in sequence whose named attribute is equal to the given value.
-    '''
+    """
     if isinstance(sequence, dict):
         sequence = sequence.values()
 
@@ -47,6 +47,7 @@ def TIME2STRING(time: int):
 
 class Json(dict):
     response: int
+    JSONDecodeError = json.JSONDecodeError
 
     def __getattr__(self, attr):
         return self.get(attr)
@@ -64,3 +65,45 @@ class Json(dict):
 
 Json_Receiver = Callable[[Json], None]
 LOWER_VALIDATOR = lambda dn: str(dn).lower()
+
+
+class Data:
+    DATA = None
+    DB_FILE = "data.dump"
+
+    @classmethod
+    def file(cls, mode: str):
+        return open(cls.DB_FILE, mode)
+
+    @classmethod
+    def rfile(cls):
+        print("reading file")
+        return cls.file("rb")
+
+    @classmethod
+    def wfile(cls):
+        print("writing file")
+        return cls.file("wb")
+
+    @classmethod
+    def load(cls):
+        try:
+            json = pickle.load(cls.rfile())
+            json = Json(json)
+            cls.DATA = json.data
+        except Exception as e:
+            print(e)
+            print("Data Read Error")
+
+    @classmethod
+    def save(cls):
+        data = cls.data()
+        json = dict(data=data)
+        pickle.dump(json, cls.wfile())
+
+    @classmethod
+    def data(cls):
+        if not cls.DATA:
+            cls.load()
+
+        return cls.DATA
