@@ -1,27 +1,59 @@
 from wschat.ws_client import *
+from wschat.ws_commons import *
 from commons import *
 import os
 
 
-class CrypticChat:
-    def __init__(self, id: str) -> None:
-        self.id = id
-        self.chats: list[Json] = []
+class Chat:
+    def __init__(self, cc: "Recipient", json: Json):
+        self.cc = cc
+        self.json = json
+        self.seen = False
+        self.sent = False
 
-        # Json keys for CrypticChat
+        # Json keys for Recipient
         #   recipient
         #   sender
         #   text
-        #   datetime
+        #   time
 
-        self
+    @property
+    def isMe(self):
+        return self.cc.id == self.json.sender
+
+    def __getattr__(self, attr: str):
+        if attr in self.__dict__:
+            return self.__dict__.get(attr)
+        else:
+            return self.json[attr]
+
+
+class Recipient:
+    def __init__(self, id: str, avatar: str = "") -> None:
+        self.id = id
+        self.avatar = avatar
+        self.invalid = False
+        self.chats: list[Chat] = []
+
+    @property
+    def last_chat(self):
+        if self.chats:
+            return self.chats[-1]
+
+    @property
+    def unreads(self):
+        uns = filter(lambda k: k.recipient == self.id and not k.seen, self.chats)
+        return len(list(uns))
+
+    def add_chat(self, json: Json):
+        self.chats.append(Chat(self, json))
 
 
 class CrypticClientUser(CrypticUser):
     def __init__(self, *args) -> None:
         super().__init__(*args)
 
-        self.cryptics: list[CrypticChat] = []
+        self.cryptics: list[Recipient] = []
 
 
 class CrypticClient(Client):

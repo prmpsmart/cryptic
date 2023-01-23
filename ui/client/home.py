@@ -1,33 +1,38 @@
-from ..ui_commons import *
-
-class SideMenu(Expandable, VFrame, Shadow):
-    def __init__(self, *args):
-        VFrame.__init__(self)
-        Expandable.__init__(self, max_width=170, min_width=45)
-        Shadow.__init__(self)
-
-        lay = self.layout()
-
-        details_frame = HFrame()
-        details_lay = details_frame.layout()
-
-        lay.addWidget(details_frame)
-
-        self.avatar = AvatarButton(icon=":/user-2")
-        details_lay.addWidget(self.avatar)
+from .side_menu import *
+from .recpients import *
+from .room import *
 
 
-
-
-class CrypticClientUI(HFrame):
-
-    def __init__(self, **kwargs):
+class CrypticHome(HFrame):
+    def __init__(self, app: QApplication, **kwargs):
         super().__init__(**kwargs)
 
-        self.setWindowTitle('Cryptic')
-        self.setMinimumSize(500, 500)
+        self.app = app
+        self.theme = GreyTheme
+
+        self.setWindowTitle("Cryptic")
+        self.setMinimumHeight(600)
 
         lay = self.layout()
+        m = 0
+        lay.setContentsMargins(m, m, m, m)
+        lay.setSpacing(5)
 
         self.side_menu = SideMenu(self)
         lay.addWidget(self.side_menu)
+
+        self.recipients_view = RecipientsView(self)
+        lay.addWidget(self.recipients_view)
+
+        self.room_view = RoomView(self)
+        lay.addWidget(self.room_view)
+
+        self.setMinimumWidth(
+            self.side_menu.minimumWidth()
+            + self.recipients_view.minimumWidth()
+            + self.room_view.minimumWidth()
+            + lay.spacing() * 2
+        )
+
+    def recipient_item_selected(self, item: RecipientItem):
+        self.room_view.recipient_item_selected(item)

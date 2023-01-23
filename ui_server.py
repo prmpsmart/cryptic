@@ -1,2 +1,3 @@
 import site
-site.addsitedir('../../prmp_qt')
+
+site.addsitedir("../../prmp_qt")

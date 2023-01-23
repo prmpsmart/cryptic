@@ -41,7 +41,8 @@ def TIME():
     return int(time.time())
 
 
-def TIME2STRING(time: int):
+def TIME2STRING(time: int = 0):
+    time = time or TIME()
     return datetime.datetime.fromtimestamp(time).strftime("%d/%m/%Y ... %H:%M %p")
 
 
