@@ -125,7 +125,7 @@ RecipientItem {{
     min-height: 65px;
     max-height: 65px;
     border-radius: 5px;
-    background: {theme.one};
+    background: {theme.two};
 }}
 
 RecipientItem:hover {{
@@ -139,12 +139,12 @@ RecipientItem:checked, RecipientItem:pressed {{
 }}
 
 RecipientItem#invalid {{
-    background: {theme.two};
-    border: 1px solid {theme.one};
+    background: {theme.one};
+    border: 1px solid {theme.two};
 }}
 
 RecipientItem#invalid:hover {{
-    background: {theme.two};
+    background: {theme.one};
 }}
 
 RecipientItem#invalid:checked, RecipientItem#invalid:pressed {{

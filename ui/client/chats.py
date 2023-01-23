@@ -36,8 +36,8 @@ class ChatItem(StatusItem, VFrame):
 
         if chat.isMe:
             self.update_status(chat.sent)
-            self.status.show()
             hlay.addWidget(self.status)
+            self.status.show()
 
         chats_list.resized.connect(self.on_chats_list_resized)
 
