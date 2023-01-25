@@ -1,0 +1,8 @@
+<RCC>
+  <qresource>
+    <file>access-point.svg</file>
+    <file>cloud-off.svg</file>
+    <file>cloud.svg</file>
+    <file>login.svg</file>
+  </qresource>
+</RCC>

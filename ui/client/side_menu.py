@@ -15,7 +15,7 @@ class Detail(VFrame):
         hlay = QHBoxLayout()
         lay.addLayout(hlay)
 
-        self.value = LineEdit(placehoder=holder)
+        self.value = LineEdit(placeholder=holder)
         self.value.setDisabled(True)
         hlay.addWidget(self.value)
 
@@ -61,46 +61,6 @@ class Detail(VFrame):
         self.eye.setToolTip(tip)
 
 
-class ThemeButton(QPushButton):
-    def __init__(self, theme: Theme, home: HFrame):
-        super().__init__()
-        self.home = home
-        self.theme = theme
-        self.theme_style()
-
-    def theme_style(self):
-        border = (
-            self.home.theme.six
-            if self.theme == self.home.theme
-            else self.home.theme.one
-        )
-
-        self.setStyleSheet(
-            """
-            ThemeButton {{
-                min-height: 50px;
-                max-height: 50px;
-                border-radius: 10px;
-                border: 2px solid {border};
-                background: {theme.one}
-            }}
-            ThemeButton:hover {{
-                background: {theme.three}
-            }}
-            ThemeButton:pressed {{
-                background: {theme.two}
-            }}
-        """.format(
-                theme=self.theme, border=border
-            )
-        )
-
-        self.clicked.connect(self.change_theme)
-
-    def change_theme(self):
-        self.home.app.update_theme(self.theme)
-
-
 class SideMenu(Expandable, VFrame, Shadow):
     def __init__(self, home):
         VFrame.__init__(self)
@@ -143,26 +103,13 @@ class SideMenu(Expandable, VFrame, Shadow):
 
         profile_lay.addStretch()
 
-        theme_box = QGroupBox("Theme")
+        theme_box = ThemeBox(home)
         profile_lay.addWidget(theme_box)
-
-        theme_lay = QGridLayout(theme_box)
-
-        row = col = 0
-        for index, theme in enumerate(Themes):
-            tb = ThemeButton(theme, home)
-            col = index % 2
-            theme_lay.addWidget(tb, row, col)
-
-            if index and col:
-                row += 1
 
         self.stretch = QSpacerItem(
             0, 20, QSizePolicy.Ignored, QSizePolicy.MinimumExpanding
         )
         self.layout().addSpacerItem(self.stretch)
-
-        # self.toggle()
 
     def toggle(self):
         if not self.expanded:

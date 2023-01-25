@@ -1,5 +1,6 @@
+from . import resources
+from .qss import CRYPTIC_QSS
 from .side_menu import *
-from .recpients import *
 from .room import *
 
 

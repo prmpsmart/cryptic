@@ -1,5 +1,4 @@
 from .chats import *
-from .recpients import *
 
 
 class HF(HFrame, Shadow):
@@ -23,7 +22,7 @@ class ChatSearchDialog(Dialog):
         lay = self.windowLayout()
         self.windowFrame().setStyleSheet("background: white;")
 
-        self.search = LineEdit(placehoder="Search chats ...")
+        self.search = LineEdit(placeholder="Search chats ...")
         self.search.textEdited.connect(textEdited)
         lay.addWidget(self.search)
 

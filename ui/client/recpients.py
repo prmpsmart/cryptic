@@ -200,7 +200,7 @@ class RecipientsView(VFrame, Shadow):
         top_lay = QHBoxLayout()
         lay.addLayout(top_lay)
 
-        self.search_recipient = LineEdit(placehoder="Add recipient ...")
+        self.search_recipient = LineEdit(placeholder="Add recipient ...")
         top_lay.addWidget(self.search_recipient)
 
         add_button = IconTextButton(

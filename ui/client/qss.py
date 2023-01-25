@@ -45,6 +45,7 @@ Detail {{
     border-radius: 5px;
     border: 1px solid {theme.one};
 }}
+
 Label, LineEdit, QGroupBox {{
     font-family: Times New Roman;
 }}
@@ -81,6 +82,7 @@ SideMenu QGroupBox {{
     border: 1px solid {theme.one};
     padding-top: 30px;
     max-height: 250px;
+    background: {theme.three};
 }}
 
 SideMenu QGroupBox::title {{

@@ -34,10 +34,10 @@ class Server(PRMP_WebSocketServer):
     def on_start(self):
         print(f"\nServer started at {TIME()}")
 
-    def on_new_client(self, client):
+    def on_new_client(self, client: ClientHandler):
         print(f"New Client {client.client_address[0]} Connected")
 
-    def on_client_left(self, client):
+    def on_client_left(self, client: ClientHandler):
         print(f"Client {client.client_address[0]} left")
 
     def on_accept(self, sock, addr):

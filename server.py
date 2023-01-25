@@ -49,6 +49,10 @@ class CrypticHandler(ClientHandler):
 
                 response_json = Json(action=action)
                 response_json.response = response
+
+                if action == "signin" and self.user.jsons:
+                    response_json.jsons = self.user.jsons
+
                 self.send_json(response_json)
 
             else:
