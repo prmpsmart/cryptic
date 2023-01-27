@@ -69,12 +69,10 @@ class Data:
 
     @classmethod
     def rfile(cls):
-        # print("reading file")
         return cls.file("rb")
 
     @classmethod
     def wfile(cls):
-        # print("writing file")
         return cls.file("wb")
 
     @classmethod
