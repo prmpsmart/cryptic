@@ -30,9 +30,9 @@ class ThemeButton(QPushButton):
 
     def theme_style(self):
         border = (
-            self.home.theme.six
-            if self.theme == self.home.theme
-            else self.home.theme.one
+            self.home.app.theme.six
+            if self.theme == self.home.app.theme
+            else self.home.app.theme.one
         )
 
         self.setStyleSheet(

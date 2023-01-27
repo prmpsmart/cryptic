@@ -1,3 +1,4 @@
+import threading
 from .ws_commons import *
 
 __all__ = ["Client", "Action", "Json", "Data"]
@@ -31,18 +32,11 @@ class Action:
 
 
 class Client(PRMP_WebSocketClient):
-    instance: "Client" = None
     URI = ""
 
-    def __init__(self):
-        super().__init__()
-
-        assert not Client.instance
-
-        Client.instance = self
-
+    def __init__(self, **kargs):
+        super().__init__(**kargs)
         self.actions: dict[str, Action] = {}
-        self.signin_args = ()
         self.signed_in = False
 
     def add_receiver(self, action: str, receiver: Json_Receiver):
@@ -57,12 +51,6 @@ class Client(PRMP_WebSocketClient):
             action: Action = self.actions[action]
             action.remove_receiver(receiver)
 
-    @classmethod
-    def get_client(cls):
-        if not cls.instance:
-            cls.instance = cls()
-        return cls.instance
-
     def start_client(self, threaded: bool = True):
         if self.started:
             return
@@ -74,6 +62,9 @@ class Client(PRMP_WebSocketClient):
         except ConnectionRefusedError:
             ...
 
+    def thread_start_client(self, *args, **kwargs):
+        threading.Thread(target=self.start_client, args=args, kwargs=kwargs).start()
+
     def on_message(self) -> Json:
         data = self.data
 
@@ -84,14 +75,16 @@ class Client(PRMP_WebSocketClient):
                 action.trigger(_json)
 
         except json.JSONDecodeError as jde:
-            print(f"Message Error, {data}")
+            LOGGER.debug(f" Message Error, {data}")
 
     def send_json(self, data: Json) -> Json:
-        _json = data.to_str()
-        return self.send_message(_json)
+        if self.connected:
+            _json = data.to_str()
+            return self.send_message(_json)
 
     def send_action(self, action: str, **kwargs):
         json = Json(action=action, **kwargs)
-        self.send_json(json)
+        return self.send_json(json)
 
-    receive_action = add_receiver
+    def receive_action(self, action: str, receiver: Json_Receiver):
+        return self.add_receiver(action, receiver)

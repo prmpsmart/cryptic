@@ -14,18 +14,24 @@ class ChatItem(StatusItem, VFrame):
         lay.setSpacing(m)
         lay.setContentsMargins(m, m, m, m)
 
-        self.text_label.setSizePolicy(POLICY)
-        self.text_label.setContentsMargins(0, 0, 0, 0)
-        self.text_label.setWordWrap(True)
-        self.text_label.setTextFormat(Qt.RichText)
+        self.text_label = Label(chat.text, objectName="text")
+        lay.addWidget(self.text_label)
+
+        # self.text_label = QTextEdit()
+        # self.text_label.setPlainText(chat.text)
+
         self.text_label.setTextInteractionFlags(
             Qt.LinksAccessibleByMouse | Qt.TextSelectableByMouse
         )
+        self.text_label.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        )
 
-        self.update_text(chat.text)
+        if isinstance(self.text_label, Label):
+            self.text_label.setWordWrap(True)
+            self.text_label.setTextFormat(Qt.RichText)
+
         self.update_time(chat.time)
-
-        lay.addWidget(self.text_label)
 
         hlay = QHBoxLayout()
         lay.addLayout(hlay)
@@ -56,21 +62,25 @@ class ChatsList(SearchableList):
     resized = Signal()
 
     def __init__(self, room_view, **kwargs):
-        super().__init__(
-            reverse=0, widgetKwargs=dict(objectName="chats_list"), **kwargs
-        )
+        super().__init__(widgetKwargs=dict(objectName="chats_list"), **kwargs)
 
         self.room_view = room_view
         self.hide_hbar()
-        self.widgetLayout().setAlignment(Qt.AlignBottom)
+
+        self.spacerItem = QSpacerItem(
+            0, 0, QSizePolicy.Minimum, QSizePolicy.MinimumExpanding
+        )
+        self.widgetLayout().addItem(self.spacerItem)
+        self.widgetLayout().setSpacing(3)
 
     def add(self, item: ChatItem):
+        self.widgetLayout().removeItem(self.spacerItem)
         super().add(
             item,
             stretch=1,
-            alignment=(Qt.AlignRight if item.chat.isMe else Qt.AlignLeft)
-            | Qt.AlignBottom,
+            alignment=(Qt.AlignRight if item.chat.isMe else Qt.AlignLeft) | Qt.AlignTop,
         )
+        self.widgetLayout().addItem(self.spacerItem)
 
     def add_chat(self, chat: Chat):
         self.addItem(ChatItem(self, chat))

@@ -1,13 +1,11 @@
-from client import CrypticClient, Json
+from client import *
 import signal
 
-client = CrypticClient()
+client = CrypticClient(log_level=logging.INFO)
 client.URI = "ws://localhost:8000"
 
 client.start_client()
 
-c = 1
-STOP = 3
 
 
 def receiver(json: Json):
@@ -15,21 +13,24 @@ def receiver(json: Json):
 
 
 def action():
-    action = "signin"
-    action = "signin"
     action = "signup"
-
     client.add_receiver(action, receiver)
-    json = Json(action=action, id="mimI", key="prmp")
+    json = Json(action=action, id="mimi", key="prmp")
+    # client.send_json(json)
+
+    action = "signin"
+    client.add_receiver(action, receiver)
+    json = Json(action=action, id="mimi", key="prmp")
     client.send_json(json)
 
+    print(json)
+
+client.on_connected = action
 
 def close_sig_handler(signal: signal.Signals, frame):
     global c
     c += 1
     # os.system(f'{os.sys.executable} {os.sys.argv[0]}')
-
-    action()
 
     print(f"Exiting in {STOP}: {c}", end="\r")
 
@@ -37,7 +38,12 @@ def close_sig_handler(signal: signal.Signals, frame):
         client.send_close(reason="Test")
         client.shutdown()
         exit()
+    else:
+        action()
 
+
+c = 1
+STOP = 2
 
 signal.signal(signal.SIGINT, close_sig_handler)
 

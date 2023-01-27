@@ -47,15 +47,11 @@ class StatusItem(SearchableItem, Shadow):
         self.status.hide()
 
         self.time = Label(objectName="time")
-        self.text_label = Label(objectName="text")
 
     def update_status(self, sent: bool = False):
         self.status.setIcon(
             ":check" if sent else ":clock",
         )
-
-    def update_text(self, text: str):
-        self.text_label.setText(text)
 
     def update_time(self, time: int):
         self.time.setText(TIME2STRING(time))
@@ -97,6 +93,7 @@ class RecipientItem(Button, StatusItem):
         bottom_row.setSpacing(3)
         col.addLayout(bottom_row)
 
+        self.text_label = Label(objectName="text")
         bottom_row.addWidget(self.text_label)
 
         bottom_row.addWidget(self.status, 0, Qt.AlignRight)
@@ -117,10 +114,9 @@ class RecipientItem(Button, StatusItem):
 
         self.load()
         self.avatar_timer_id = self.startTimer(10)
-        recipient_view.home.app.theme_update.connect(self.theme_update)
 
-    def theme_update(self):
-        print(99909)
+    def update_text(self, text: str):
+        self.text_label.setText(text)
 
     def load(self):
         self.id.setText(self.recipient.id)
@@ -205,7 +201,7 @@ class RecipientsView(VFrame, Shadow):
 
         add_button = IconTextButton(
             icon=":/user-plus",
-            iconColor=QColor(home.theme.six),
+            iconColor=QColor(home.app.theme.six),
             iconSize=40,
             tip="Add Recipient",
         )

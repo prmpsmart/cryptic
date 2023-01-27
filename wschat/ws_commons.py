@@ -6,7 +6,7 @@ from .prmp_websockets import *
 def GET_BY_ATTR(
     sequence: Union[list, dict],
     validator: Callable[[Any], Any] = None,
-    **attrs_values: dict[str, Any]
+    **attrs_values: dict[str, Any],
 ):
     """
     return object in sequence whose named attribute is equal to the given value.
@@ -35,15 +35,6 @@ def GET(dict: dict, key: str):
     if isinstance(key, str):
         key = key.lower()
     return dict.get(key, None)
-
-
-def TIME():
-    return int(time.time())
-
-
-def TIME2STRING(time: int = 0):
-    time = time or TIME()
-    return datetime.datetime.fromtimestamp(time).strftime("%d/%m/%Y ... %H:%M %p")
 
 
 class Json(dict):
@@ -78,29 +69,30 @@ class Data:
 
     @classmethod
     def rfile(cls):
-        print("reading file")
+        # print("reading file")
         return cls.file("rb")
 
     @classmethod
     def wfile(cls):
-        print("writing file")
+        # print("writing file")
         return cls.file("wb")
 
     @classmethod
     def load(cls):
         try:
-            json = pickle.load(cls.rfile())
-            json = Json(json)
-            cls.DATA = json.data
+            data = pickle.load(cls.rfile())
+            cls.DATA = Json(data)
         except Exception as e:
-            print(e)
-            print("Data Read Error")
+            print(f"Data Read Error: {e}")
 
     @classmethod
     def save(cls):
         data = cls.data()
-        json = dict(data=data)
-        pickle.dump(json, cls.wfile())
+        if isinstance(data, Json):
+            data = dict(data)
+
+        file = cls.wfile()
+        pickle.dump(data, file)
 
     @classmethod
     def data(cls):

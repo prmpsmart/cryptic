@@ -10,14 +10,21 @@ class CrypticClientApp(QApplication):
 
     def __init__(self):
         super().__init__()
+        CrypticUIClientData.load_data()
+
+        self.theme = GreyTheme
+
+        if CrypticUIClientData.THEME:
+            self.theme = CrypticUIClientData.THEME
 
         self.ui = CrypticHome(self)
         self.ui.destroyed.connect(self.quit)
+        self.ui.setWindowFlag(Qt.WindowStaysOnTopHint)
 
-        self.update_theme(self.ui.theme)
+        self.update_theme(self.theme)
 
     def update_theme(self, theme: Theme):
-        self.ui.theme = theme
+        self.theme = theme
         self.add_style_sheet(CRYPTIC_QSS.format(theme=theme))
         self.theme_update.emit()
 

@@ -5,9 +5,6 @@ class ClientHandler(PRMP_WebSocketHandler):
     def __init__(self, socket, addr, server: "Server"):
         super().__init__(socket, addr, server)
 
-    def on_connected(self):
-        ...
-
     def on_message(self):
         ...
 
@@ -27,18 +24,4 @@ class ClientHandler(PRMP_WebSocketHandler):
 
 class Server(PRMP_WebSocketServer):
     Handler = ClientHandler
-
-    def __init__(self, server_address: tuple[str, int], **kwargs) -> None:
-        super().__init__(server_address, self.Handler, **kwargs)
-
-    def on_start(self):
-        print(f"\nServer started at {TIME()}")
-
-    def on_new_client(self, client: ClientHandler):
-        print(f"New Client {client.client_address[0]} Connected")
-
-    def on_client_left(self, client: ClientHandler):
-        print(f"Client {client.client_address[0]} left")
-
-    def on_accept(self, sock, addr):
-        print(f"Client {addr} Accepted")
+    allow_reuse_address = True

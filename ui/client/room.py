@@ -103,9 +103,7 @@ class Footer(HF):
         lay.setContentsMargins(m, m, m, m)
 
         self.text_input = TextInput(
-            self,
-            min_height=40,
-            max_height=200,
+            self, min_height=40, max_height=200, callback=self.on_send
         )
         lay.addWidget(self.text_input)
 

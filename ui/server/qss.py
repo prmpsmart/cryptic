@@ -78,6 +78,14 @@ UserItem Label#label {{
     font-weight: bold;
 }}
 
+UserItem#closed {{
+    background: {theme.one};
+}}
+
+UserItem#closed Label {{
+    color: {theme.six};
+}}
+
 
 
 """

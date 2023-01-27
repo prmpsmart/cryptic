@@ -13,13 +13,15 @@ class ThemeDialog(Dialog):
         lay.addWidget(theme)
 
 
+IP_PORT = tuple[str, int]
+
+
 class UserItem(VFrame):
-    def __init__(self, ip: str, port: int):
+    def __init__(self, ip_port: IP_PORT):
         super().__init__()
         addShadow(self)
 
-        self.ip: str = ip
-        self.port: int = port
+        self.ip_port: IP_PORT = ip_port
         self.id: str = None
 
         lay = self.layout()
@@ -30,7 +32,8 @@ class UserItem(VFrame):
         ip_lay = QHBoxLayout()
         hlay.addLayout(ip_lay)
         ip_lay.addWidget(Label("IP Address:", objectName="label"))
-        self.ip_address = Label(ip)
+
+        self.ip_address = Label(ip_port[0])
         ip_lay.addWidget(self.ip_address)
 
         hlay.addStretch()
@@ -38,7 +41,8 @@ class UserItem(VFrame):
         port_lay = QHBoxLayout()
         hlay.addLayout(port_lay)
         port_lay.addWidget(Label("Port:", objectName="label"))
-        self.port = Label(str(port))
+
+        self.port = Label(str(ip_port[1]))
         port_lay.addWidget(self.port)
 
         hlay.addStretch()
@@ -46,8 +50,9 @@ class UserItem(VFrame):
         id_lay = QHBoxLayout()
         hlay.addLayout(id_lay)
         id_lay.addWidget(Label("ID:", objectName="label"))
-        self.id = Label()
-        id_lay.addWidget(self.id)
+
+        self.id_lbl = Label()
+        id_lay.addWidget(self.id_lbl)
 
         hlay.addStretch()
 
@@ -56,93 +61,90 @@ class UserItem(VFrame):
 
     def setID(self, id: str):
         self.id = id
-        self.id.setText(id)
+        self.id_lbl.setText(id)
 
 
 class Users(Scrollable):
     def __init__(self):
         super().__init__(VFrame, widgetKwargs=dict(objectName="users_list"))
         self.users: dict[tuple[str, int], UserItem] = {}
-        self.spacer = QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.spacer = QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
 
-    def add_user(self, ip: str, port: int):
-        ip_port = (ip, port)
+    def add_user(self, ip_port: IP_PORT):
         if ip_port not in self.users:
             lay = self.widgetLayout()
             lay.removeItem(self.spacer)
 
-            item = UserItem(ip, port)
-            lay.addWidget(item, 1, Qt.AlignTop)
+            item = UserItem(ip_port)
+            lay.addWidget(item)
 
             lay.addItem(self.spacer)
-
             self.users[ip_port] = item
 
-    def remove_user(self, ip: str, port: int):
-        ip_port = (ip, port)
+    def remove_user(self, ip_port: IP_PORT):
         if ip_port in self.users:
             lay = self.widgetLayout()
+
             item = self.users[ip_port]
             lay.removeWidget(item)
+            item.deleteLater()
+
+            self.widget().update()
+            self.update()
+
             del self.users[ip_port]
 
-    def update(self, ip: str, port: int, id: str):
-        ip_port = (ip, port)
+    def update_item(self, ip_port: IP_PORT, id: str):
         if ip_port in self.users:
             item = self.users[ip_port]
             item.setID(id)
 
-    # def showEvent(self, event: QShowEvent) -> None:
-    #     for _ in range(5):
-    #         self.add_user("127.0.0.1", 8000 + _)
-
 
 class UiHandler(CrypticHandler):
     def signin_handler(self, json: Json):
-        ...
+        response = super().signin_handler(json)
+        if self.user:
+            CrypticServerHome.instance.on_new_signin.emit(self)
+
+        return response
 
 
 class UiServer(Server):
     Handler = UiHandler
 
-    def on_start(self):
-        print('Started')
+    def on_close(self):
+        super().on_close()
+        CrypticServerHome.instance.update_server_button(False)
 
     def on_new_client(self, client: UiHandler):
+        super().on_new_client(client)
         CrypticServerHome.instance.on_new_client.emit(client)
-        print(f"New Client {client.client_address[0]} Connected")
-        ...
 
     def on_client_left(self, client: UiHandler):
+        super().on_client_left(client)
         CrypticServerHome.instance.on_client_left.emit(client)
-        print(f"Client {client.client_address[0]} left\n")
-        ...
-
-    def on_accept(self, sock, addr):
-        CrypticServerHome.instance.on_accept.emit(addr)
-        print(f"Client {addr} Accepted")
-        ...
 
 
 class CrypticServerHome(VFrame):
     on_new_client = Signal(UiHandler)
+    on_new_signin = Signal(UiHandler)
     on_client_left = Signal(UiHandler)
-    on_accept = Signal(tuple)
-    instance: 'CrypticServerHome' = None
+    instance: "CrypticServerHome" = None
 
-    def __init__(self, app: QApplication, server_address:tuple[str, int], **kwargs):
+    def __init__(self, app: QApplication, server_address: tuple[str, int], **kwargs):
         super().__init__(**kwargs)
+
+        self.setWindowFlag(Qt.WindowStaysOnTopHint)
 
         if not CrypticServerHome.instance:
             CrypticServerHome.instance = self
 
         self.app = app
-        self.theme = GreyTheme
-
-        self.destroyed.connect(self.quit)
+        self.server_address = server_address
+        self.server: UiServer = None
 
         self.setWindowTitle("Cryptic Server")
-        self.setMinimumHeight(600)
+        self.setMinimumHeight(300)
 
         lay = self.layout()
         m = 5
@@ -165,7 +167,7 @@ class CrypticServerHome(VFrame):
             "Connected Users",
             ":access-point",
             objectName="connected",
-            iconColor=QColor(self.theme.six),
+            iconColor=QColor(app.theme.six),
             iconSize=20,
         )
         self.total_connected.setAttribute(Qt.WA_TransparentForMouseEvents)
@@ -175,7 +177,7 @@ class CrypticServerHome(VFrame):
             "Logged In Users",
             ":login",
             objectName="logged_in",
-            iconColor=QColor(self.theme.six),
+            iconColor=QColor(app.theme.six),
             iconSize=20,
         )
         hlay.addWidget(self.total_logged_in)
@@ -188,54 +190,71 @@ class CrypticServerHome(VFrame):
         self.users_list = Users()
         lay.addWidget(self.users_list)
 
-        self.theme_dialog = ThemeDialog(self, parent=self)
+        self.app.theme_dialog = ThemeDialog(self, parent=self)
 
         self.on_new_client.connect(self.on_new_client_slot)
         self.on_client_left.connect(self.on_client_left_slot)
-        self.on_accept.connect(self.on_accept_slot)
+        self.on_new_signin.connect(self.on_new_signin_slot)
 
-        self.server = UiServer(server_address)
-
-        self.toggle_server(d=False)
+        self.update_server_button(False)
 
     def update_theme(self):
         icon = QSvgIcon(
             ":cloud" if self.toggle_server_button.isChecked() else ":cloud-off",
-            color=self.theme.one,
+            color=self.app.theme.one,
         )
         self.toggle_server_button.setIcon(icon)
 
-        icon = QSvgIcon(":access-point", color=self.theme.six)
+        icon = QSvgIcon(":access-point", color=self.app.theme.six)
         self.total_connected.setIcon(icon)
 
-        icon = QSvgIcon(":login", color=self.theme.six)
+        icon = QSvgIcon(":login", color=self.app.theme.six)
         self.total_logged_in.setIcon(icon)
 
-    def toggle_server(self, toggle: bool = False, d: bool = True):
-        self.toggle_server_button.setText(("Start" if toggle else "Stop") + " Server")
-        icon = QSvgIcon(":cloud" if toggle else ":cloud-off", color=self.theme.one)
+    def update_server_button(self, toggle: bool):
+        self.toggle_server_button.setText(
+            ("Start" if not toggle else "Stop") + " Server"
+        )
+        icon = QSvgIcon(
+            ":cloud" if not toggle else ":cloud-off", color=self.app.theme.one
+        )
         self.toggle_server_button.setIcon(icon)
 
-        if not d:
-            return
-
+    def toggle_server(self, toggle: bool = False):
         if toggle:
+            if not self.server:
+                self.server = UiServer(self.server_address, log_level=logging.INFO)
             self.server.serve_forever()
+
         else:
-            self.server._shutdown_gracefully()
+            if self.server.started:
+                self.server.close()
+                self.server = None
+
+        self.update_server_button(toggle)
+
+    def on_new_signin_slot(self, client: UiHandler):
+        self.users_list.update_item(client.client_address, client.user.id)
 
     def on_new_client_slot(self, client: UiHandler):
-        ...
+        self.users_list.add_user(client.client_address)
 
     def on_client_left_slot(self, client: UiHandler):
-        ...
-
-    def on_accept_slot(self, addr: tuple[str, str]):
-        ...
+        self.users_list.remove_user(client.client_address)
 
     def toggle_theme_dialog(self):
-        MOVE_DIALOG_TO_CURSOR(self.theme_dialog)
-        self.theme_dialog.show()
+        MOVE_DIALOG_TO_CURSOR(self.app.theme_dialog)
+        self.app.theme_dialog.show()
 
-    def quit(self):
-        self.server._shutdown_gracefully()
+    def showEvent(self, event: QShowEvent) -> None:
+        if self.server and self.server.started:
+            return
+
+        self.move(20, 10)
+        QTimer.singleShot(1000, lambda: self.toggle_server_button.toggle())
+        # for _ in range(5):
+        # self.add_user(("127.0.0.1", 8000 + _))
+        ...
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.toggle_server(False)

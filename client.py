@@ -11,12 +11,6 @@ class Chat:
         self.seen = False
         self.sent = False
 
-        # Json keys for Recipient
-        #   recipient
-        #   sender
-        #   text
-        #   time
-
     @property
     def isMe(self):
         return self.cc.id == self.json.sender
@@ -52,28 +46,83 @@ class Recipient:
 class CrypticClientUser(CrypticUser):
     def __init__(self, *args) -> None:
         super().__init__(*args)
-
         self.cryptics: list[Recipient] = []
 
 
+class CrypticClientData(Data):
+    DB_FILE = os.path.join(os.path.dirname(__file__), "cryptic_client.dump")
+    USER: CrypticClientUser = None
+    CLIENT: "CrypticClient" = None
+
+    @classmethod
+    def user(cls) -> CrypticClientUser:
+        if cls.USER:
+            return cls.USER
+        data = cls.data()
+        if data:
+            return data.user
+
+    @classmethod
+    def uri(cls) -> str:
+        if not cls.CLIENT:
+            return
+
+        if cls.CLIENT.URI:
+            return cls.CLIENT.URI
+
+        data = cls.data()
+        if data:
+            cls.CLIENT.URI = data.uri
+            return cls.CLIENT.URI
+
+    @classmethod
+    def on_save(cls):
+        ...
+
+    @classmethod
+    def on_load(cls):
+        ...
+
+    @classmethod
+    def save_data(cls) -> str:
+        cls.DATA = Json(user=cls.USER)
+        if cls.CLIENT:
+            cls.DATA.uri = cls.CLIENT.URI
+        cls.on_save()
+        cls.save()
+
+    @classmethod
+    def load_data(cls) -> str:
+        if data := cls.data():
+            cls.USER = data.user
+            if cls.CLIENT:
+                cls.CLIENT.URI = data.uri
+            cls.on_load()
+
+
 class CrypticClient(Client):
-    URI = "ws://localhost:8000"
+    DATA = CrypticClientData
 
     def on_connected(self):
-        print("Connected to Server")
+        super().on_connected()
 
-        if user := CrypticData.user():
-            if not user.signed_in:
-                self.get_client().signin(user.id, user.key)
+        if user := self.DATA.user():
+            if not self.signed_in:
+                self.signin(user.id, user.key)
+
+    def send_action(self, action: str, **kwargs):
+        json = Json(action=action, **kwargs)
+        LOGGER.info(json)
+        return self.send_json(json)
 
     def signin(self, id: str, key: str):
         self.signed_in = False
         self.send_action(action="signin", id=id, key=key)
-        self.signin_args = id, key
         self.receive_action("signin", self.signin_response)
 
     def signin_response(self, json: Json):
-        if "success" in json.response.lower() and self.signin_args:
+        print("here")
+        if json.response == "Logged In":
             data = dict(
                 id=json.id,
                 key=json.key,
@@ -81,14 +130,14 @@ class CrypticClient(Client):
             )
             self.signed_in = True
 
-            if user := CrypticData.user():
+            if user := self.DATA.user():
                 user.__dict__.update(data)
 
             else:
                 user = CrypticClientUser(**data)
-                CrypticData.DATA = user
+                self.DATA.DATA = user
 
-            CrypticData.save()
+            self.DATA.save()
 
     def signup(self, id: str, key: int):
         self.send_action(action="signup", id=id, key=key)
@@ -96,10 +145,8 @@ class CrypticClient(Client):
     def edit_profile(self, **kwargs):
         self.send_action("edit_profile", **kwargs)
 
+    def text(self, **kwargs):
+        self.send_action("text", **kwargs)
 
-class CrypticData(Data):
-    DB_FILE = os.path.join(os.path.dirname(__file__), "cryptic.dump")
 
-    @classmethod
-    def user(cls) -> CrypticClientUser:
-        return cls.data()
+CrypticClientData.CLIENT = CrypticClient

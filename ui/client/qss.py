@@ -1,12 +1,24 @@
 CRYPTIC_QSS = """
 CrypticHome, RoomView, ChatsView, ChatsList, #chats_list {{
     background: {theme.one};
+    border: none;
 }}
 
-SideMenu {{
+SideMenu, SideMenu Scrollable, #profile_list {{
     border-top-right-radius: 5px;
     border-bottom-right-radius: 5px;
+    border: none;
     background: {theme.three};
+}}
+
+SideMenu Scrollable QScrollBar:vertical {{
+    width: 3px;
+
+}}
+
+SideMenu Scrollable QScrollBar::add-line:vertical, SideMenu Scrollable QScrollBar::sub-line:vertical, SideMenu Scrollable QScrollBar::add-page:vertical, SideMenu Scrollable QScrollBar::sub-page:vertical {{
+    height: 0px;
+    width: 0px;
 }}
 
 RecipientsView, RecipientsList, #recipients_list {{
@@ -56,7 +68,7 @@ Detail LeftAlignLabel, SideMenu QGroupBox::title {{
     font-weight: bold;
 }}
 
-Detail LineEdit {{
+Detail LineEdit, SideMenu HFrame > LineEdit {{
     font-size: 15px;
     border-radius: 5px;
     min-height: 25px;
@@ -246,6 +258,22 @@ ChatItem Label#text {{
 ChatItem#left {{
     border: 1px solid {theme.five};
     background: {theme.four};
+}}
+
+
+SideMenu VFrame TextButton {{
+    background: {theme.two};
+    color: {theme.six};
+    min-width: 50px;
+    max-width: 50px;
+}}
+
+SideMenu VFrame TextButton:hover {{
+    background: {theme.three};
+}}
+
+SideMenu VFrame TextButton:pressed {{
+    background: {theme.one};
 }}
 
 """

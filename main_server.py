@@ -1,12 +1,12 @@
-from server import Cryptic, CrypticServer
+from server import *
 
 server_address = ("", 8000)
-server = CrypticServer(server_address)
+server = CrypticServer(server_address, log_level=logging.INFO)
 
 cryptics = [
     ("mimi", "prmp"),
-    ("mimi", "prmp"),
-    ("mimi", "prmp"),
+    ("mirac", "prmp"),
+    ("prmp", "prmp"),
 ]
 
 for cryptic in cryptics:
