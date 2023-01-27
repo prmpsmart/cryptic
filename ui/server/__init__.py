@@ -164,7 +164,7 @@ class CrypticServerHome(VFrame):
         hlay.addStretch()
 
         self.total_connected = IconTextButton(
-            "Connected Users",
+            "Connected: 0",
             ":access-point",
             objectName="connected",
             iconColor=QColor(app.theme.six),
@@ -174,7 +174,7 @@ class CrypticServerHome(VFrame):
         hlay.addWidget(self.total_connected)
 
         self.total_logged_in = IconTextButton(
-            "Logged In Users",
+            "Logged_In: 0",
             ":login",
             objectName="logged_in",
             iconColor=QColor(app.theme.six),

@@ -44,8 +44,8 @@ class Recipient:
 
 
 class CrypticClientUser(CrypticUser):
-    def __init__(self, *args) -> None:
-        super().__init__(*args)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.cryptics: list[Recipient] = []
 
 
@@ -84,7 +84,7 @@ class CrypticClientData(Data):
         ...
 
     @classmethod
-    def save_data(cls) -> str:
+    def save_data(cls):
         cls.DATA = Json(user=cls.USER)
         if cls.CLIENT:
             cls.DATA.uri = cls.CLIENT.URI
@@ -103,6 +103,11 @@ class CrypticClientData(Data):
 class CrypticClient(Client):
     DATA = CrypticClientData
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.add_receiver("signin", self.signin_response)
+        self.signin_args = ()
+
     def on_connected(self):
         super().on_connected()
 
@@ -110,34 +115,38 @@ class CrypticClient(Client):
             if not self.signed_in:
                 self.signin(user.id, user.key)
 
+    def falsify_variables(self):
+        super().falsify_variables()
+        self.signed_in = False
+
     def send_action(self, action: str, **kwargs):
         json = Json(action=action, **kwargs)
-        LOGGER.info(json)
         return self.send_json(json)
 
     def signin(self, id: str, key: str):
+        if self.signin_args:
+            return
+
         self.signed_in = False
+        self.signin_args = id, key
         self.send_action(action="signin", id=id, key=key)
-        self.receive_action("signin", self.signin_response)
 
     def signin_response(self, json: Json):
-        print("here")
-        if json.response == "Logged In":
-            data = dict(
-                id=json.id,
-                key=json.key,
-                avatar=json.avatar,
-            )
-            self.signed_in = True
+        if self.signin_args:
+            if json.response == LOGGED_IN:
 
-            if user := self.DATA.user():
-                user.__dict__.update(data)
+                self.signed_in = True
+                if user := self.DATA.user() and json.avatar:
+                    user.avatar = json.avatar
 
-            else:
-                user = CrypticClientUser(**data)
-                self.DATA.DATA = user
+                else:
+                    user = CrypticClientUser(
+                        self.signin_args[0], key=self.signin_args[1], avatar=json.avatar
+                    )
+                    self.DATA.USER = user
 
-            self.DATA.save()
+                self.signin_args = ()
+                self.DATA.save_data()
 
     def signup(self, id: str, key: int):
         self.send_action(action="signup", id=id, key=key)

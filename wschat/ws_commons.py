@@ -83,7 +83,7 @@ class Data:
             data = pickle.load(cls.rfile())
             cls.DATA = Json(data)
         except Exception as e:
-            print(f"Data Read Error: {e}")
+            LOGGER.debug(f"Data Read Error: {e}")
 
     @classmethod
     def save(cls):

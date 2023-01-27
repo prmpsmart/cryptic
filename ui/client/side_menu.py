@@ -76,6 +76,9 @@ class SideMenu(Expandable, VFrame, Shadow):
         self.home = home
         self.client: CrypticUIClient = home.client
 
+        home.signinSignal.connect(self.signin_receiver)
+        home.signupSignal.connect(self.signup_receiver)
+        home.edit_profileSignal.connect(self.edit_profile_receiver)
         home.clientStatusSignal.connect(self.update_status)
 
         lay = self.layout()
@@ -85,13 +88,15 @@ class SideMenu(Expandable, VFrame, Shadow):
         hlay = QHBoxLayout()
         lay.addLayout(hlay)
 
-        color = "white"
-
         hlay.addStretch()
 
-        self.status = AvatarButton(
-            icon=":cloud-off", iconSize=40, mask=30, iconColor=color
-        )
+        self.status_icons: list[QIcon] = [
+            QSvgIcon(":wifi-off", color=Qt.white),
+            QSvgIcon(":wifi-0", color=Qt.white),
+            QSvgIcon(":wifi-1", color=Qt.white),
+            QSvgIcon(":wifi", color=Qt.white),
+        ]
+        self.status = AvatarButton(iconSize=40, mask=30, icon=self.status_icons[0])
         self.status.clicked.connect(self.toggle)
         hlay.addWidget(self.status)
         addShadow(self.status)
@@ -103,7 +108,7 @@ class SideMenu(Expandable, VFrame, Shadow):
         profile_lay.setContentsMargins(m, m, m, m)
         lay.addWidget(self.profile)
 
-        self.image = ImageLabel(default=QSvgPixmap(":user-2", color).toImage())
+        self.image = ImageLabel(default=QSvgPixmap(":user-2", Qt.white).toImage())
         profile_lay.addWidget(self.image)
 
         self.id = Detail(title="ID :", holder="ID of this client.")
@@ -172,18 +177,39 @@ class SideMenu(Expandable, VFrame, Shadow):
         self.layout().addSpacerItem(self.spacerItem)
 
         self.load()
-        self.toggle()
+
+    @property
+    def client_connected(self) -> bool:
+        if not self.client.started:
+            self.home.start_client()
+        return self.client.connected
+
+    def signup_receiver(self, json: Json):
+        QMessageBox.information(self, "Sign Up", json.response)
+
+    def signin_receiver(self, json: Json):
+        QMessageBox.information(self, "Sign In", json.response)
+
+    def edit_profile_receiver(self, json: Json):
+        QMessageBox.information(self, "Profile Edit", json.response)
 
     def update_status(self):
         text = "Not Connected."
-        if self.client.started:
-            text = "Connecting..."
+        icon = self.status_icons[0]
+
+        if self.client.signed_in:
+            text = "Signed In"
+            icon = self.status_icons[3]
+
         elif self.client.connected:
             text = "Connected To Server."
-        elif self.client.signed_in:
-            text = "Signed In"
-            self.status.setIcon(":cloud")
+            icon = self.status_icons[2]
 
+        elif self.client.started:
+            text = "Connecting..."
+            icon = self.status_icons[1]
+
+        self.status.setIcon(icon)
         self.status_text.setText(text)
 
     def load(self):
@@ -204,12 +230,15 @@ class SideMenu(Expandable, VFrame, Shadow):
             return
 
         try:
-            CrypticUIClient.parse_url(uri)
+            self.client.parse_url(uri)
             CrypticUIClient.URI = uri
+            if self.client.started:
+                self.client.close("Changing Server")
             CrypticUIClientData.save_data()
             QMessageBox.information(
                 self, "Server URI Saved", "Server URI saved successfully."
             )
+            self.home.start_client()
 
         except Exception as e:
             QMessageBox.information(
@@ -232,12 +261,6 @@ class SideMenu(Expandable, VFrame, Shadow):
 
         return id, key
 
-    @property
-    def client_connected(self) -> bool:
-        if not self.client.connected:
-            self.home.start_client()
-        return self.client.connected
-
     def signup(self):
         if id_key := self.sign_check():
             if self.client_connected:
@@ -245,6 +268,19 @@ class SideMenu(Expandable, VFrame, Shadow):
 
     def signin(self):
         if id_key := self.sign_check():
+            if user := self.home.user:
+                id = id_key[0]
+                if id != user.id:
+                    if (
+                        QMessageBox.question(
+                            self,
+                            "Sign In",
+                            "Do you want to sign out {user.id} and sign in {id}?",
+                        )
+                        != QMessageBox.StandardButton.Yes
+                    ):
+                        return
+
             if self.client_connected:
                 self.client.signin(*id_key)
 
@@ -260,11 +296,6 @@ class SideMenu(Expandable, VFrame, Shadow):
             self.layout().addSpacerItem(self.spacerItem)
 
     def showEvent(self, event: QShowEvent) -> None:
-        if not self.home._user:
-            id = "mimi"
-            key = "prmp"
-            self.setSign(id, key)
-
         if not CrypticUIClient.URI:
             self.uri.setText("ws://localhost:8000")
             self.server_uri.setChecked(True)

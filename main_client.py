@@ -7,7 +7,6 @@ client.URI = "ws://localhost:8000"
 client.start_client()
 
 
-
 def receiver(json: Json):
     print(json)
 
@@ -25,7 +24,9 @@ def action():
 
     print(json)
 
+
 client.on_connected = action
+
 
 def close_sig_handler(signal: signal.Signals, frame):
     global c

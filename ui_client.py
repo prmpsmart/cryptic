@@ -25,6 +25,7 @@ class CrypticClientApp(QApplication):
 
     def update_theme(self, theme: Theme):
         self.theme = theme
+        CrypticUIClientData.THEME = theme
         self.add_style_sheet(CRYPTIC_QSS.format(theme=theme))
         self.theme_update.emit()
 

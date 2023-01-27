@@ -34,8 +34,8 @@ class Action:
 class Client(PRMP_WebSocketClient):
     URI = ""
 
-    def __init__(self, **kargs):
-        super().__init__(**kargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.actions: dict[str, Action] = {}
         self.signed_in = False
 
@@ -85,6 +85,3 @@ class Client(PRMP_WebSocketClient):
     def send_action(self, action: str, **kwargs):
         json = Json(action=action, **kwargs)
         return self.send_json(json)
-
-    def receive_action(self, action: str, receiver: Json_Receiver):
-        return self.add_receiver(action, receiver)

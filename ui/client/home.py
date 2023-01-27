@@ -2,36 +2,11 @@ from .side_menu import *
 from .room import *
 
 
-class ActionHandler:
-    signinSignal = Signal(bool)
-    signupSignal = Signal(bool)
-    textSignal = Signal(Json)
-    edit_profileSignal = Signal(str)
-
-    def __init__(self, home: "CrypticHome") -> None:
-        for name in ["signin", "signup", "text", "edit_profile"]:
-            receiver = getattr(self, name)
-            home.client.add_receiver(name, receiver)
-        self.home = home
-
-    def signup(self, json: Json):
-        QMessageBox.information(self, "Sign Up", json.response)
-        self.signupSignal.emit(json.response == "Signed Up")
-
-    def signin(self, json: Json):
-        QMessageBox.information(self, "Sign In", json.response)
-        self.signinSignal.emit(json.response == "Logged In")
-        self.home.clientStatusSignal.emit()
-
-    def text(self, json: Json):
-        self.textSignal.emit(json)
-
-    def edit_profile(self, json: Json):
-        QMessageBox.information(self, "Profile Edit", json.response)
-        self.edit_profileSignal.emit(json.response)
-
-
 class CrypticHome(HFrame):
+    signinSignal = Signal(Json)
+    signupSignal = Signal(Json)
+    edit_profileSignal = Signal(Json)
+    textSignal = Signal(Json)
 
     clientStatusSignal = Signal()
 
@@ -41,7 +16,9 @@ class CrypticHome(HFrame):
         self.app = app
         self._user: CrypticClientUser = None
         self.client = CrypticUIClient(self.clientStatusSignal, log_level=logging.INFO)
-        self.action_handler = ActionHandler(self)
+
+        for receiver in [self.signin, self.signup, self.text, self.edit_profile]:
+            self.client.add_receiver(receiver.__name__, receiver)
 
         self.setWindowTitle("Cryptic")
         self.setMinimumHeight(700)
@@ -67,14 +44,27 @@ class CrypticHome(HFrame):
             + lay.spacing() * 2
         )
 
-    def recipient_item_selected(self, item: RecipientItem):
-        self.room_view.recipient_item_selected(item)
-
     @property
     def user(self) -> CrypticClientUser:
         if not self._user:
             self._user = CrypticUIClientData.user()
         return self._user
+
+    def signup(self, json: Json):
+        self.signupSignal.emit(json)
+
+    def signin(self, json: Json):
+        self.signinSignal.emit(json)
+        self.clientStatusSignal.emit()
+
+    def text(self, json: Json):
+        self.textSignal.emit(json)
+
+    def edit_profile(self, json: Json):
+        self.edit_profileSignal.emit(json)
+
+    def recipient_item_selected(self, item: RecipientItem):
+        self.room_view.recipient_item_selected(item)
 
     def start_client(self) -> CrypticUIClient:
         if CrypticUIClient.URI:
@@ -90,9 +80,9 @@ class CrypticHome(HFrame):
     def closeEvent(self, event: QCloseEvent) -> None:
         if self.client.started:
             self.client.close("Client UI Closing")
+        CrypticUIClientData.save_data()
 
     def showEvent(self, event: QShowEvent) -> None:
         self.move(550, 10)
         if not self.client.started:
             QTimer.singleShot(500, self.start_client)
-            ...

@@ -1,3 +1,9 @@
+LOGGED_IN = "Logged In"
+SIGNED_UP = "Signed Up"
+INVALID = "Invalid inputs"
+ID_UNAVAILABLE = "ID Not Available"
+
+
 class CrypticUser:
     def __init__(self, id: str, key: str, avatar: str = "") -> None:
         self.id = id
@@ -6,3 +12,6 @@ class CrypticUser:
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}(id={self.id})"
+
+    def __bool__(self):
+        return True

@@ -2,8 +2,6 @@ from wschat.ws_server import *
 from commons import *
 import datetime
 
-INVALID = "Invalid inputs"
-
 
 class CrypticServerUser(CrypticUser):
     def __init__(self, *args, **kwargs) -> None:
@@ -95,9 +93,9 @@ class CrypticHandler(ClientHandler):
                     key=key,
                     avatar=json.avatar,
                 )
-                response = "Signed Up"
+                response = SIGNED_UP
             else:
-                response = "ID isn't available"
+                response = ID_UNAVAILABLE
 
         return response
 
@@ -105,16 +103,21 @@ class CrypticHandler(ClientHandler):
         id: str = json.id
         key: str = json.key
 
+        if self.user and id != self.user.id:
+            self.user = None
+
         response = INVALID
 
-        if not (id in self.server.clients_map or self.user):
+        if not (id in self.server.clients_map and self.user):
             if id and key:
                 user = Cryptic.USERS.get(id)
 
                 if user and user.key == key:
                     self.user = user
-                    response = "Logged In"
                     self.server.clients_map[id] = self
+                    json = Json(id=id, avatar=user.avatar)
+                    json.response = LOGGED_IN
+                    response = json
 
         return response
 
@@ -149,7 +152,7 @@ class CrypticHandler(ClientHandler):
             if not self.send_json(json):
                 self.user.add_json(json)
         except Exception as e:
-            print(e, "receive_json")
+            LOGGER.debug(f" {e} : receive_json")
 
 
 class CrypticServer(Server):

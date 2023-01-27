@@ -14,3 +14,12 @@
 #         return self.socket.send(data)
 #     except:
 #         self.keep_alive = False
+
+
+c = 0
+f = 0
+
+for a in range(1, 101):
+    c += str(a).count(str(f))
+
+print(c)

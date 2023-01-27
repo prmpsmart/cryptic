@@ -14,5 +14,9 @@
     <file>user-2.svg</file>
     <file>user-plus.svg</file>
     <file>user.svg</file>
+    <file>wifi-0.svg</file>
+    <file>wifi-1.svg</file>
+    <file>wifi-off.svg</file>
+    <file>wifi.svg</file>
   </qresource>
 </RCC>

@@ -456,7 +456,7 @@ class PRMP_WebsocketProtocol:
                     self.data = bytearray()
             else:
                 self.index += 1
-    
+
     def falsify_variables(self):
         self.socket = None
         self.keep_alive = False
