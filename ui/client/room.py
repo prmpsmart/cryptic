@@ -39,7 +39,7 @@ class Header(HF):
 
         self.chat_search_dialog: ChatSearchDialog = None
 
-        self.avatar = AvatarButton(mask=45, icon=":user", clickable=False)
+        self.avatar = AvatarButton(mask=45, icon=":user", clickable=False, iconColor=Qt.white)
         lay.addWidget(self.avatar)
 
         col = QVBoxLayout()
@@ -60,14 +60,14 @@ class Header(HF):
         row.addStretch()
 
         self.notification = IconTextButton(
-            icon=":bell-off", checkable=True, iconSize=60, tip="Notification"
+            icon=":bell-off", checkable=True, iconSize=60, tip="Notification", iconColor=Qt.white
         )
         self.notification.toggle()
         self.notification.toggled.connect(self.toggle_notification)
         row.addWidget(self.notification)
         addShadow(self.notification)
 
-        search = IconTextButton(icon=":search", iconSize=60, tip="Search")
+        search = IconTextButton(icon=":search", iconSize=60, tip="Search", iconColor=Qt.white)
         search.clicked.connect(self.toggle_chat_search_dialog)
         row.addWidget(search)
         addShadow(search)
@@ -107,7 +107,7 @@ class Footer(HF):
         )
         lay.addWidget(self.text_input)
 
-        send = IconTextButton(icon=":send", iconSize=60, tip="Send")
+        send = IconTextButton(icon=":send", iconSize=60, tip="Send", iconColor=Qt.white)
         send.clicked.connect(self.on_send)
         lay.addWidget(send)
         addShadow(send)
@@ -152,13 +152,16 @@ class RoomView(VFrame):
         if self.recipient_item:
             return self.recipient_item.recipient
 
-    def recipient_item_selected(self, recipient_item: SearchableItem):
+    def recipient_item_selected(self, recipient_item: RecipientItem):
         if recipient_item == self.recipient_item:
             return
 
         self.recipient_item = recipient_item
         self.header.load()
 
+        chats = recipient_item.recipient.chats
+
         self.chats_list.deleteItems()
-        for chat in r.chats:
+
+        for chat in chats:
             self.chats_list.add_chat(chat)

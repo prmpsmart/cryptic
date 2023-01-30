@@ -13,7 +13,6 @@ class CrypticHome(HFrame):
         super().__init__(**kwargs)
 
         self.app = app
-        self._user: CrypticClientUser = None
         self.client = CrypticUIClient(log_level=logging.DEBUG)
 
         for receiver in [
@@ -51,9 +50,7 @@ class CrypticHome(HFrame):
 
     @property
     def user(self) -> CrypticClientUser:
-        if not self._user:
-            self._user = CrypticUIClientData.user()
-        return self._user
+        return self.client.DATA.user()
 
     def signup(self, json: Json):
         self.signupSignal.emit(json)
@@ -85,9 +82,10 @@ class CrypticHome(HFrame):
                 )
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        CrypticUIClientData.save_data()
+        self.side_menu.ended = True
         if self.client.started:
             self.client.close("Client UI Closing")
-        CrypticUIClientData.save_data()
 
     def showEvent(self, event: QShowEvent) -> None:
         self.move(550, 10)

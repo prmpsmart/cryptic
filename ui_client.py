@@ -10,8 +10,8 @@ class CrypticClientApp(QApplication):
 
     def __init__(self):
         super().__init__()
-        CrypticUIClientData.load_data()
 
+        CrypticUIClientData.load_data()
         self.theme = GreyTheme
 
         if CrypticUIClientData.THEME:

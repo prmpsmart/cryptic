@@ -94,7 +94,7 @@ class Data:
 
     @classmethod
     def data(cls):
-        if not cls.DATA:
+        if not isinstance(cls.DATA, Json):
             cls.load()
 
         return cls.DATA

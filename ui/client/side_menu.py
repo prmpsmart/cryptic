@@ -19,8 +19,10 @@ class Detail(VFrame):
         self.valueEdit.setDisabled(True)
         hlay.addWidget(self.valueEdit)
 
-        self.edit_icon = QIcon(":edit")
-        self.check_icon = QIcon(":check")
+        color = Qt.white
+
+        self.edit_icon = QSvgIcon(":edit", color=color)
+        self.check_icon = QSvgIcon(":check", color=color)
 
         self.action = Button(icon=self.edit_icon, iconSize=20)
         self.action.setCheckable(True)
@@ -29,8 +31,8 @@ class Detail(VFrame):
         hlay.addWidget(self.action)
 
         if hide:
-            self.eye_icon = QIcon(":eye")
-            self.eye_off_icon = QIcon(":eye-off")
+            self.eye_icon = QSvgIcon(":eye", color=color)
+            self.eye_off_icon = QSvgIcon(":eye-off", color=color)
 
             self.valueEdit.setEchoMode(QLineEdit.Password)
 
@@ -95,6 +97,7 @@ class SideMenu(Expandable, VFrame, Shadow):
             QSvgIcon(":wifi-0", color=Qt.white),
             QSvgIcon(":wifi-1", color=Qt.white),
             QSvgIcon(":wifi", color=Qt.white),
+            QSvgIcon(":screen-share-off", color=Qt.white),
         ]
         self.status = AvatarButton(iconSize=40, mask=30, icon=self.status_icons[0])
         self.status.clicked.connect(self.toggle)
@@ -168,6 +171,8 @@ class SideMenu(Expandable, VFrame, Shadow):
         save_uri.clicked.connect(self.save_uri)
         lay.addWidget(save_uri)
 
+        profile_lay.addSpacing(10)
+
         self.status_text = Label()
         profile_lay.addWidget(self.status_text)
 
@@ -176,13 +181,14 @@ class SideMenu(Expandable, VFrame, Shadow):
         )
         self.layout().addSpacerItem(self.spacerItem)
 
-        self.load()
+        self.ended = False
 
         self.updateTimer = QTimer()
         self.updateTimer.setInterval(500)
         self.updateTimer.timeout.connect(self.update_status)
         self.updateTimer.start(1000)
-        
+
+        self.load()
 
     @property
     def client_connected(self) -> bool:
@@ -206,10 +212,15 @@ class SideMenu(Expandable, VFrame, Shadow):
             text = "Connecting..."
             icon = self.status_icons[1]
 
-        elif not self.client.started:
-            self.home.start_client
+        elif not self.ended and not self.client.started:
+            if CrypticUIClient.URI:
+                self.home.start_client()
+            else:
+                text = "Server URI not set."
+                icon = self.status_icons[-1]
 
         self.status.setIcon(icon)
+        self.status.setToolTip(text)
         self.status_text.setText(text)
 
     def load(self):
@@ -218,7 +229,10 @@ class SideMenu(Expandable, VFrame, Shadow):
         else:
             self.sign.setChecked(True)
 
-        self.update_status()
+        if self.client.URI:
+            self.uri.setText(self.client.URI)
+        else:
+            self.server_uri.setChecked(True)
 
     def setSign(self, id: str, key: str):
         self.id.setValue(id)
@@ -302,7 +316,6 @@ class SideMenu(Expandable, VFrame, Shadow):
             if self.client_connected:
                 self.client.signin(*id_key)
                 self.called_signin = True
-                print(9909)
 
     def toggle(self):
         if not self.expanded:

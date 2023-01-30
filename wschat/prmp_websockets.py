@@ -1227,7 +1227,6 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
             return
 
         self.started = True
-        print("called here")
 
         def connect():
             try:

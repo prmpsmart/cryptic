@@ -2,15 +2,24 @@ from .commons import *
 
 
 class StatusItem(SearchableItem, Shadow):
+    ICONS: list[QIcon] = []
+
     def __init__(self):
         SearchableItem.__init__(self)
         Shadow.__init__(self)
 
+        if not StatusItem.ICONS:
+            StatusItem.ICONS = [
+                QSvgIcon(":clock", color=Qt.white),
+                QSvgIcon(":check", color=Qt.white),
+            ]
+
         self.status = IconButton(
-            icon=":clock",
+            icon=self.ICONS[0],
             iconSize=15,
             border=False,
             clickable=False,
+            color=Qt.white,
         )
         self.status.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self.status.hide()
@@ -18,9 +27,7 @@ class StatusItem(SearchableItem, Shadow):
         self.time = Label(objectName="time")
 
     def update_status(self, sent: bool = False):
-        self.status.setIcon(
-            ":check" if sent else ":clock",
-        )
+        self.status.setIcon(self.ICONS[sent])
 
     def update_time(self, time: int):
         self.time.setText(TIME2STRING(time))
@@ -43,7 +50,7 @@ class RecipientItem(Button, StatusItem):
 
         lay = QHBoxLayout(self)
 
-        self.avatar = AvatarButton(mask=51, icon=":user")
+        self.avatar = AvatarButton(mask=51, icon=":user", iconColor=Qt.white)
         self.avatar.setAttribute(Qt.WA_TransparentForMouseEvents)
         lay.addWidget(self.avatar)
 
@@ -135,7 +142,7 @@ class RecipientItem(Button, StatusItem):
 
     def timerEvent(self, e: QTimerEvent) -> None:
         if e.timerId() == self.avatar_timer_id:
-            self.avatar.setAvatar(self.recipient.avatar)
+            self.avatar.setAvatar(self.recipient.avatar, iconColor=Qt.white)
             self.killTimer(self.avatar_timer_id)
 
 
@@ -152,6 +159,7 @@ class RecipientsView(VFrame, Shadow):
     def __init__(self, home: HFrame, **kwargs):
         VFrame.__init__(self, **kwargs)
         # Shadow.__init__(self)
+
         self.home = home
         self.client: CrypticUIClient = home.client
 
@@ -169,11 +177,12 @@ class RecipientsView(VFrame, Shadow):
         lay.addLayout(top_lay)
 
         self.search_recipient = LineEdit(placeholder="Add recipient ...")
+        self.search_recipient.returnPressed.connect(self.add_recipient)
         top_lay.addWidget(self.search_recipient)
 
         add_button = IconTextButton(
             icon=":/user-plus",
-            iconColor=QColor(home.app.theme.six),
+            iconColor=Qt.white,
             iconSize=40,
             tip="Add Recipient",
         )
@@ -188,31 +197,38 @@ class RecipientsView(VFrame, Shadow):
 
         self.recipients = []
 
-    def fillRecipients(self, recipients: list[Recipient]):
-        if recipients == self.recipients:
-            return
+        self.fillRecipients()
 
-        self.recipients = recipients
-        self.recipients_list.deleteItems()
-        self.recipients_list.fillItems(
-            [RecipientItem(self, recipient) for recipient in recipients]
-        )
+    @property
+    def user(self) -> CrypticClientUser:
+        return self.home.user
+
+    def fillRecipients(self):
+        items: SearchableItems = []
+
+        for id, recipient in self.user.recipients.items():
+            if id not in self.recipients:
+                recipient_item = RecipientItem(self, recipient)
+                self.recipients.append(id)
+                items.append(recipient_item)
+
+        if items:
+            self.recipients_list.fillItems(items)
 
     def recipient_item_selected(self):
         chat_item: RecipientItem = self.sender()
         self.home.recipient_item_selected(chat_item)
 
     def add_recipient(self):
-        id = self.search_recipient.text()
-        user: CrypticClientUser = self.home.user
+        id = self.search_recipient.text().strip()
 
-        if user:
+        if self.user:
             if id:
-                if id == user.id:
+                if id == self.user.id:
                     QMessageBox.information(
                         self, "Add Recipient", "You can't add youself."
                     )
-                elif id in user.recipients:
+                elif id in self.user.recipients:
                     QMessageBox.information(
                         self, "Add Recipient", "Recipient already added."
                     )
@@ -220,10 +236,13 @@ class RecipientsView(VFrame, Shadow):
                     QMessageBox.information(self, "Add Recipient", "Not Signed In.")
                 else:
                     self.client.add_recipient(id)
+                self.search_recipient.clear()
             else:
                 QMessageBox.information(self, "Add Recipient", "Input ID.")
         else:
             QMessageBox.information(self, "Add Recipient", "No Signed Up User.")
 
     def add_recipient_response(self, json: Json):
-        QMessageBox.information(self, "Add Recipient", json.response)
+        QMessageBox.information(self, "Add Recipient", f"'{json.id}' {json.response}")
+        if json.response == ADDED:
+            self.fillRecipients()

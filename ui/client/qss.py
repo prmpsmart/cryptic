@@ -36,8 +36,9 @@ RoomView {{
 SideMenu AvatarButton {{
     background: {theme.one};
     border-radius: 20px;
-    max-width: 40px;
-    max-height: 40px;
+    max-width: 35px;
+    max-height: 35px;
+    border: 3px solid {theme.five};
 }}
 
 SideMenu AvatarButton:hover {{
@@ -119,21 +120,6 @@ RecipientsView LineEdit {{
     border-top-right-radius: 5px;
 }}
 
-RecipientsView IconTextButton {{
-    background: {theme.one};
-    border-radius: 15px;
-    border: 3px solid {theme.five};
-    max-width: 25px;
-}}
-
-RecipientsView IconTextButton:hover {{
-    background: {theme.two};
-    border: 3px solid {theme.two};
-}}
-
-RecipientsView IconTextButton:pressed {{
-    background: {theme.one};
-}}
 
 RecipientItem {{
     min-height: 65px;
@@ -209,24 +195,26 @@ Header Label#id {{
     color: black;
 }}
 
-Header IconTextButton, Footer IconTextButton {{
+IconTextButton {{
+    background: {theme.one};
     border-radius: 15px;
+    border: 3px solid {theme.five};
     max-width: 25px;
-    background: {theme.four};
 }}
 
-Header IconTextButton:hover, Footer IconTextButton:hover {{
-    background: {theme.five};
+IconTextButton:hover {{
+    background: {theme.two};
+    border: 3px solid {theme.two};
 }}
 
-Header IconTextButton:pressed, Footer IconTextButton:pressed {{
-    background: {theme.three};
+IconTextButton:pressed {{
+    background: {theme.one};
 }}
 
 ChatSearchDialog LineEdit {{
     padding: 5px;
     border: none;
-    border-bottom: 2px solid #e1e1e1;
+    border-bottom: 2px solid {theme.one};
     border-radius: 5px;
 }}
 

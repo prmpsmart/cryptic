@@ -16,7 +16,7 @@ class Chat:
         return self.cc.id == self.json.sender
 
     def __getattr__(self, attr: str):
-        if attr in self.__dict__:
+        if attr in self.__dict__.keys():
             return self.__dict__.get(attr)
         else:
             return self.json[attr]
@@ -28,6 +28,9 @@ class Recipient:
         self.avatar = avatar
         self.invalid = False
         self.chats: list[Chat] = []
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.id})"
 
     @property
     def last_chat(self):
@@ -56,24 +59,20 @@ class CrypticClientData(Data):
 
     @classmethod
     def user(cls) -> CrypticClientUser:
-        if cls.USER:
-            return cls.USER
-        data = cls.data()
-        if data:
-            return data.user
+        if not cls.USER:
+            cls.load_data()
+
+        return cls.USER
 
     @classmethod
     def uri(cls) -> str:
         if not cls.CLIENT:
             return
 
-        if cls.CLIENT.URI:
-            return cls.CLIENT.URI
+        if not cls.CLIENT.URI:
+            cls.load_data()
 
-        data = cls.data()
-        if data:
-            cls.CLIENT.URI = data.uri
-            return cls.CLIENT.URI
+        return cls.CLIENT.URI
 
     @classmethod
     def on_save(cls):
@@ -110,6 +109,9 @@ class CrypticClient(Client):
         self.signin_args = ()
         self.signed_in = False
 
+    def __bool__(self):
+        return True
+
     def on_connected(self):
         super().on_connected()
         if user := self.DATA.user():
@@ -141,14 +143,17 @@ class CrypticClient(Client):
             if json.response == LOGGED_IN:
 
                 self.signed_in = True
-                if user := self.DATA.user() and json.avatar:
-                    user.avatar = json.avatar
+                user = self.DATA.user()
 
-                else:
+                if not isinstance(user, CrypticClientUser):
                     user = CrypticClientUser(
                         self.signin_args[0], key=self.signin_args[1], avatar=json.avatar
                     )
                     self.DATA.USER = user
+
+                else:
+                    if json.avatar != user.avatar:
+                        user.avatar = json.avatar
 
                 self.signin_args = ()
                 self.DATA.save_data()
@@ -166,9 +171,10 @@ class CrypticClient(Client):
         self.send_user_action("add_recipient", recipient=id)
 
     def add_recipient_response(self, json: Json):
-        if user := self.DATA.user() and json.response == ADDED:
+        if (user := self.DATA.user()) and (json.response == ADDED):
             recipient = Recipient(json.id, json.avatar)
             user.recipients[json.id] = recipient
+            self.DATA.save_data()
 
 
 CrypticClientData.CLIENT = CrypticClient
