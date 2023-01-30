@@ -19,22 +19,15 @@ class CrypticUIClientData(CrypticClientData):
 class CrypticUIClient(CrypticClient):
     DATA = CrypticUIClientData
 
-    def __init__(self, signal: Signal, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self.signal = signal
 
     def on_connected(self):
         super().on_connected()
 
-        self.signal.emit()
         if user := self.DATA.user():
             if user.id and user.key:
                 self.signin(user.id, user.key)
-
-    def on_closed(self):
-        super().on_closed()
-        self.signal.emit()
 
 
 CrypticUIClientData.CLIENT = CrypticUIClient

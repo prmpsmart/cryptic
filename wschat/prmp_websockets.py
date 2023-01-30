@@ -152,7 +152,6 @@ def TIME2STRING(time: int = 0):
 
 class PRMP_WebsocketProtocol:
     def __init__(self) -> None:
-
         self.header_buffer = bytearray()
         self.header_to_read = 2048
 
@@ -181,6 +180,7 @@ class PRMP_WebsocketProtocol:
         self.keep_alive = True
         self.handshaked = False
         self.valid_client = False
+        self.started = False
 
     def _make_handshake_response(self, key: str) -> str:
         return HANDSHAKE_STR % dict(acceptstr=self._calculate_response_key(key))
@@ -457,20 +457,13 @@ class PRMP_WebsocketProtocol:
             else:
                 self.index += 1
 
-    def falsify_variables(self):
-        self.socket = None
-        self.keep_alive = False
-        self.connected = False
-
     def try_except(self, func: str, arg):
         try:
             return getattr(self.socket, func)(arg)
 
         except Exception as e:
             LOGGER.debug(e)
-            if self.socket:
-                self.socket.close()
-            self.falsify_variables()
+            self.close_socket()
 
     def recv(self, read: int = 1024):
         if recv := self.try_except("recv", read):
@@ -572,8 +565,8 @@ class PRMP_WebsocketProtocol:
 
         payload = struct.pack("!H", status) + reason
         self.send_payload(False, payload, opcode=OPCODE_CLOSE)
-        self.connected = False
-        self.on_closed()
+
+        self.close_socket()
 
     def _handshake(self):
         ...
@@ -586,10 +579,27 @@ class PRMP_WebsocketProtocol:
             elif self.valid_client:
                 data = self.recv(16384)
                 if not data:
-                    raise Exception("remote socket closed")
+                    LOGGER.debug("remote socket closed")
+                    return
 
                 for d in data:
                     self._parseMessage(d)
+
+    def server_close(self, status: int, reason: str):
+        self.close_socket()
+
+    def close_socket(self):
+        self.keep_alive = False
+        self.connected = False
+
+        if self.socket:
+            self.socket.close()
+            self.socket = None
+
+        if self.started:
+            self.on_closed()
+
+        self.started = False
 
     def on_connected(self):
         ...
@@ -635,6 +645,7 @@ class PRMP_WebSocketHandler(PRMP_WebsocketProtocol, socketserver.StreamRequestHa
 
     def setup(self):
         self.socket = self.request
+        self.started = True
         super().setup()
 
     def _read_http_headers(self) -> dict:
@@ -687,9 +698,8 @@ class PRMP_WebSocketHandler(PRMP_WebsocketProtocol, socketserver.StreamRequestHa
         self.keep_alive = False
 
     def finish(self) -> None:
-        super().finish()
         self.server._client_left(self)
-        self.on_closed()
+        self.close_socket()
 
 
 class PRMP_WebSocketServer(socketserver.ThreadingTCPServer):
@@ -771,23 +781,19 @@ class PRMP_WebSocketServer(socketserver.ThreadingTCPServer):
             self.on_new_client(client)
 
     def _client_left(self, client: "PRMP_WebSocketHandler"):
-        self.on_client_left(client)
         if client in self.clients:
             self.clients.remove(client)
+            self.on_client_left(client)
 
     def close_client(self, client: "PRMP_WebSocketHandler"):
         client.finish()
-        client.socket.close()
 
     def close_clients(self):
-        for client in self.clients:
-            self.close_client(client)
-
-    def _disconnect_clients_abruptly(self):
         """
         Terminate clients abruptly (no CLOSE handshake) without shutting down the server
         """
-        self.close_clients()
+        for client in self.clients:
+            self.close_client(client)
 
     def _disconnect_clients_gracefully(
         self, status=STATUS_NORMAL, reason=DEFAULT_CLOSE_REASON
@@ -804,11 +810,11 @@ class PRMP_WebSocketServer(socketserver.ThreadingTCPServer):
         Send a CLOSE handshake to all connected clients before terminating server
         """
         self.started = False
-        self.on_close()
         if self.clients:
             self._disconnect_clients_gracefully(status, reason)
         self.server_close()
         self.shutdown()
+        self.on_close()
 
     def get_request(self):
         sock, addr = super().get_request()
@@ -907,7 +913,6 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
 
         self.handshake_response = None
         self.rfile = None
-        self.started = False
 
     def __iter__(self):
         """
@@ -1157,8 +1162,10 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
         for addrinfo in addrinfo_list:
             family, socktype, proto = addrinfo[:3]
             sock = socket.socket(family, socktype, proto)
+
             if timeout:
                 sock.settimeout(timeout)
+
             for opts in DEFAULT_SOCKET_OPTION:
                 sock.setsockopt(*opts)
 
@@ -1216,21 +1223,30 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
 
         assert address and port, "Provide valid (address and port) or url."
 
-        self.socket = self._connect(address=address, port=port, timeout=timeout)
-        self.rfile = self.socket.makefile("rb", -1)
+        if self.started:
+            return
+
+        self.started = True
+        print("called here")
+
+        def connect():
+            try:
+                self.socket = self._connect(address=address, port=port, timeout=timeout)
+                self.rfile = self.socket.makefile("rb", -1)
+                self.handshake_response = self.handshake(
+                    url, address, port, resource, options
+                )
+            except socket.timeout as st:
+                self.on_timeout()
+
+        connect()
 
         try:
-            self.handshake_response = self.handshake(
-                url, address, port, resource, options
-            )
             if self.handshake_response.status in SUPPORTED_REDIRECT_STATUSES:
                 for _ in range(redirect_limit):
                     url = self.handshake_response.headers["location"]
                     self.socket.close()
-                    self.socket = self._connect(address=address, port=port)
-                    self.handshake_response = self.handshake(
-                        url, address, port, resource, options
-                    )
+                    connect()
 
             self.connected = True
             self.valid_client = True
@@ -1238,30 +1254,10 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
             self.on_connected()
 
         except Exception as e:
-            if self.socket:
-                self.socket.close()
-                self.socket = None
-            raise
+            self.close_socket()
 
-    def abort(self):
-        """
-        Low-level asynchronous abort, wakes up other threads that are waiting in recv_*
-        """
-        if self.connected:
-            self.socket.shutdown(socket.SHUT_RDWR)
-
-    def shutdown(self):
-        """
-        close socket, immediately.
-        """
-        if self.socket:
-            self.keep_alive = False
-            self.socket.close()
-            self.socket = None
-            self.connected = False
-
-    def start(self, threaded=True):
-        if self.started:
+    def start_handle(self, threaded=True):
+        if not self.started:
             return
 
         if threaded:
@@ -1269,14 +1265,20 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
         else:
             self.handle()
 
-        self.started = True
+    def handle(self):
+        self.keep_alive = True
+        super().handle()
+        self.close_socket()
 
     def close(self, reason: str = ""):
         self.send_close(reason=reason)
-        self.shutdown()
+        self.close_socket()
 
     def on_closed(self):
         LOGGER.info(" Disconnected from Server")
 
     def on_connected(self):
         LOGGER.info(" Connected to Server")
+
+    def on_timeout(self):
+        LOGGER.info(" Connecting to Server Timeout")

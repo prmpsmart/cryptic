@@ -46,7 +46,7 @@ class Recipient:
 class CrypticClientUser(CrypticUser):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.cryptics: list[Recipient] = []
+        self.recipients: dict[str, Recipient] = {}
 
 
 class CrypticClientData(Data):
@@ -106,22 +106,27 @@ class CrypticClient(Client):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.add_receiver("signin", self.signin_response)
+        self.add_receiver("add_recipient", self.add_recipient_response)
         self.signin_args = ()
+        self.signed_in = False
 
     def on_connected(self):
         super().on_connected()
-
         if user := self.DATA.user():
-            if not self.signed_in:
-                self.signin(user.id, user.key)
+            self.signin(user.id, user.key)
 
-    def falsify_variables(self):
-        super().falsify_variables()
+    def close_socket(self):
         self.signed_in = False
+        super().close_socket()
 
     def send_action(self, action: str, **kwargs):
         json = Json(action=action, **kwargs)
         return self.send_json(json)
+
+    def send_user_action(self, action: str, **kwargs):
+        user = self.DATA.user()
+        kwargs["id"] = user.id
+        return self.send_action(action, **kwargs)
 
     def signin(self, id: str, key: str):
         if self.signin_args:
@@ -152,10 +157,18 @@ class CrypticClient(Client):
         self.send_action(action="signup", id=id, key=key)
 
     def edit_profile(self, **kwargs):
-        self.send_action("edit_profile", **kwargs)
+        self.send_user_action("edit_profile", **kwargs)
 
     def text(self, **kwargs):
-        self.send_action("text", **kwargs)
+        self.send_user_action("text", **kwargs)
+
+    def add_recipient(self, id: str):
+        self.send_user_action("add_recipient", recipient=id)
+
+    def add_recipient_response(self, json: Json):
+        if user := self.DATA.user() and json.response == ADDED:
+            recipient = Recipient(json.id, json.avatar)
+            user.recipients[json.id] = recipient
 
 
 CrypticClientData.CLIENT = CrypticClient

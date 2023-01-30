@@ -75,11 +75,11 @@ class SideMenu(Expandable, VFrame, Shadow):
 
         self.home = home
         self.client: CrypticUIClient = home.client
+        self.called_signin = False
 
         home.signinSignal.connect(self.signin_receiver)
         home.signupSignal.connect(self.signup_receiver)
         home.edit_profileSignal.connect(self.edit_profile_receiver)
-        home.clientStatusSignal.connect(self.update_status)
 
         lay = self.layout()
         m = 5
@@ -178,20 +178,17 @@ class SideMenu(Expandable, VFrame, Shadow):
 
         self.load()
 
+        self.updateTimer = QTimer()
+        self.updateTimer.setInterval(500)
+        self.updateTimer.timeout.connect(self.update_status)
+        self.updateTimer.start(1000)
+        
+
     @property
     def client_connected(self) -> bool:
         if not self.client.started:
-            self.home.start_client()
+            QMessageBox.information(self, "Connection", "Not Connected to Server.")
         return self.client.connected
-
-    def signup_receiver(self, json: Json):
-        QMessageBox.information(self, "Sign Up", json.response)
-
-    def signin_receiver(self, json: Json):
-        QMessageBox.information(self, "Sign In", json.response)
-
-    def edit_profile_receiver(self, json: Json):
-        QMessageBox.information(self, "Profile Edit", json.response)
 
     def update_status(self):
         text = "Not Connected."
@@ -208,6 +205,9 @@ class SideMenu(Expandable, VFrame, Shadow):
         elif self.client.started:
             text = "Connecting..."
             icon = self.status_icons[1]
+
+        elif not self.client.started:
+            self.home.start_client
 
         self.status.setIcon(icon)
         self.status_text.setText(text)
@@ -261,12 +261,30 @@ class SideMenu(Expandable, VFrame, Shadow):
 
         return id, key
 
+    def signup_receiver(self, json: Json):
+        QMessageBox.information(self, "Sign Up", json.response)
+
+    def signin_receiver(self, json: Json):
+        if self.called_signin:
+            QMessageBox.information(self, "Sign In", json.response)
+            self.called_signin = False
+
+    def edit_profile_receiver(self, json: Json):
+        QMessageBox.information(self, "Profile Edit", json.response)
+
     def signup(self):
         if id_key := self.sign_check():
             if self.client_connected:
                 self.client.signup(*id_key)
 
     def signin(self):
+        if self.called_signin:
+            QMessageBox.information(
+                self,
+                "Sign In",
+                "Already signing in",
+            )
+
         if id_key := self.sign_check():
             if user := self.home.user:
                 id = id_key[0]
@@ -275,7 +293,7 @@ class SideMenu(Expandable, VFrame, Shadow):
                         QMessageBox.question(
                             self,
                             "Sign In",
-                            "Do you want to sign out {user.id} and sign in {id}?",
+                            f"Do you want to sign out {user.id} and sign in {id}?",
                         )
                         != QMessageBox.StandardButton.Yes
                     ):
@@ -283,6 +301,8 @@ class SideMenu(Expandable, VFrame, Shadow):
 
             if self.client_connected:
                 self.client.signin(*id_key)
+                self.called_signin = True
+                print(9909)
 
     def toggle(self):
         if not self.expanded:

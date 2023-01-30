@@ -6,18 +6,23 @@ class CrypticHome(HFrame):
     signinSignal = Signal(Json)
     signupSignal = Signal(Json)
     edit_profileSignal = Signal(Json)
+    add_recipientSignal = Signal(Json)
     textSignal = Signal(Json)
-
-    clientStatusSignal = Signal()
 
     def __init__(self, app: QApplication, **kwargs):
         super().__init__(**kwargs)
 
         self.app = app
         self._user: CrypticClientUser = None
-        self.client = CrypticUIClient(self.clientStatusSignal, log_level=logging.INFO)
+        self.client = CrypticUIClient(log_level=logging.DEBUG)
 
-        for receiver in [self.signin, self.signup, self.text, self.edit_profile]:
+        for receiver in [
+            self.signin,
+            self.signup,
+            self.text,
+            self.edit_profile,
+            self.add_recipient,
+        ]:
             self.client.add_receiver(receiver.__name__, receiver)
 
         self.setWindowTitle("Cryptic")
@@ -55,7 +60,6 @@ class CrypticHome(HFrame):
 
     def signin(self, json: Json):
         self.signinSignal.emit(json)
-        self.clientStatusSignal.emit()
 
     def text(self, json: Json):
         self.textSignal.emit(json)
@@ -63,11 +67,14 @@ class CrypticHome(HFrame):
     def edit_profile(self, json: Json):
         self.edit_profileSignal.emit(json)
 
+    def add_recipient(self, json: Json):
+        self.add_recipientSignal.emit(json)
+
     def recipient_item_selected(self, item: RecipientItem):
         self.room_view.recipient_item_selected(item)
 
     def start_client(self) -> CrypticUIClient:
-        if CrypticUIClient.URI:
+        if CrypticUIClient.URI and not self.client.started:
             try:
                 self.client.thread_start_client()
             except Exception as e:
@@ -84,5 +91,3 @@ class CrypticHome(HFrame):
 
     def showEvent(self, event: QShowEvent) -> None:
         self.move(550, 10)
-        if not self.client.started:
-            QTimer.singleShot(500, self.start_client)

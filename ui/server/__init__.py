@@ -254,7 +254,6 @@ class CrypticServerHome(VFrame):
         QTimer.singleShot(1000, lambda: self.toggle_server_button.toggle())
         # for _ in range(5):
         # self.add_user(("127.0.0.1", 8000 + _))
-        ...
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.toggle_server(False)

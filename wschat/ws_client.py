@@ -57,10 +57,10 @@ class Client(PRMP_WebSocketClient):
 
         try:
             self.connect(url=self.URI)
-            self.start(threaded)
+            self.start_handle(threaded)
 
         except ConnectionRefusedError:
-            ...
+            self.close_socket()
 
     def thread_start_client(self, *args, **kwargs):
         threading.Thread(target=self.start_client, args=args, kwargs=kwargs).start()
@@ -69,18 +69,19 @@ class Client(PRMP_WebSocketClient):
         data = self.data
 
         try:
-            _json = Json.from_str(data)
-            action = self.actions.get(_json.action.lower())
+            json = Json.from_str(data)
+            action = self.actions.get(json.action)
+
             if action:
-                action.trigger(_json)
+                action.trigger(json)
 
         except json.JSONDecodeError as jde:
             LOGGER.debug(f" Message Error, {data}")
 
     def send_json(self, data: Json) -> Json:
         if self.connected:
-            _json = data.to_str()
-            return self.send_message(_json)
+            json = data.to_str()
+            return self.send_message(json)
 
     def send_action(self, action: str, **kwargs):
         json = Json(action=action, **kwargs)

@@ -1,35 +1,4 @@
-from ..ui_commons import *
-from client import *
-
-R = [
-    Recipient("mimi"),
-    Recipient("miracle"),
-    Recipient("prmpsmart"),
-    Recipient("princerm"),
-    Recipient("frown_stone"),
-    Recipient("FrowN StonE"),
-]
-
-r = R[0]
-j = Json(
-    recipient="miracle",
-    sender=r.id,
-    text="I'll come with my team too.",
-    time=TIME(),
-)
-r.invalid = True
-
-r.add_chat(j)
-j = Json(
-    sender="miracle",
-    recipient=r.id,
-    text="I'll come with my team too.",
-    time=TIME(),
-)
-r.add_chat(j)
-
-R[1].add_chat(j)
-R[2].add_chat(j)
+from .commons import *
 
 
 class StatusItem(SearchableItem, Shadow):
@@ -184,6 +153,9 @@ class RecipientsView(VFrame, Shadow):
         VFrame.__init__(self, **kwargs)
         # Shadow.__init__(self)
         self.home = home
+        self.client: CrypticUIClient = home.client
+
+        self.home.add_recipientSignal.connect(self.add_recipient_response)
 
         self.w = 300
         self.setMinimumWidth(self.w)
@@ -216,8 +188,6 @@ class RecipientsView(VFrame, Shadow):
 
         self.recipients = []
 
-        self.fillRecipients(R)
-
     def fillRecipients(self, recipients: list[Recipient]):
         if recipients == self.recipients:
             return
@@ -232,11 +202,28 @@ class RecipientsView(VFrame, Shadow):
         chat_item: RecipientItem = self.sender()
         self.home.recipient_item_selected(chat_item)
 
-    def showEvent(self, event: PySide6.QtGui.QShowEvent) -> None:
-        self.home.recipient_item_selected(self.recipients_list.arranged_items[0])
-        ...
-
     def add_recipient(self):
-        recipient = self.search_recipient.text()
-        if recipient and not list(filter(lambda rec: rec.id == recipient, R)):
-            print("Searching ...")
+        id = self.search_recipient.text()
+        user: CrypticClientUser = self.home.user
+
+        if user:
+            if id:
+                if id == user.id:
+                    QMessageBox.information(
+                        self, "Add Recipient", "You can't add youself."
+                    )
+                elif id in user.recipients:
+                    QMessageBox.information(
+                        self, "Add Recipient", "Recipient already added."
+                    )
+                elif not self.client.connected:
+                    QMessageBox.information(self, "Add Recipient", "Not Signed In.")
+                else:
+                    self.client.add_recipient(id)
+            else:
+                QMessageBox.information(self, "Add Recipient", "Input ID.")
+        else:
+            QMessageBox.information(self, "Add Recipient", "No Signed Up User.")
+
+    def add_recipient_response(self, json: Json):
+        QMessageBox.information(self, "Add Recipient", json.response)

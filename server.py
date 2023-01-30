@@ -1,6 +1,5 @@
 from wschat.ws_server import *
 from commons import *
-import datetime
 
 
 class CrypticServerUser(CrypticUser):
@@ -49,6 +48,8 @@ class CrypticHandler(ClientHandler):
                 else:
                     response = action_handler(json)
 
+                response = response or INVALID
+
                 response_json = Json(action=action)
 
                 if isinstance(response, Json):
@@ -56,9 +57,9 @@ class CrypticHandler(ClientHandler):
                 else:
                     response_json.response = response
 
-                self.send_json(response_json)
+                p = self.send_json(response_json)
 
-                if action == "signin":
+                if action == "signin" and response_json.response == LOGGED_IN:
                     self.send_user_jsons()
 
             else:
@@ -78,13 +79,27 @@ class CrypticHandler(ClientHandler):
             LOGGER.debug(" Recv : Client disconnected.")
             self.keep_alive = False
 
+    def send_user_jsons(self):
+        if not self.user:
+            return
+
+        jsons = list(self.user.jsons)
+        for index, json in enumerate(jsons):
+            if self.send_json(json):
+                del self.user.jsons[index]
+
+    def receive_json(self, json: Json):
+        try:
+            if not self.send_json(json):
+                self.user.add_json(json)
+        except Exception as e:
+            LOGGER.debug(f" {e} : receive_json")
+
     # action handlers
 
     def signup_handler(self, json: Json):
         id = json.id
         key = json.key
-
-        response = INVALID
 
         if id and key:
             if id not in Cryptic.USERS:
@@ -97,16 +112,17 @@ class CrypticHandler(ClientHandler):
             else:
                 response = ID_UNAVAILABLE
 
-        return response
+            return response
 
     def signin_handler(self, json: Json):
         id: str = json.id
         key: str = json.key
 
-        if self.user and id != self.user.id:
-            self.user = None
-
-        response = INVALID
+        if self.user:
+            if id != self.user.id:
+                self.user = None
+            else:
+                return LOGGED_IN
 
         if not (id in self.server.clients_map and self.user):
             if id and key:
@@ -117,27 +133,19 @@ class CrypticHandler(ClientHandler):
                     self.server.clients_map[id] = self
                     json = Json(id=id, avatar=user.avatar)
                     json.response = LOGGED_IN
-                    response = json
-
-        return response
-
-    def send_user_jsons(self):
-        if not self.user:
-            return
-
-        jsons = list(self.user.jsons)
-        for index, json in enumerate(jsons):
-            if self.send_json(json):
-                del self.user.jsons[index]
+                    return json
 
     def edit_profile_handler(self, json: Json):
-        response = INVALID
-        return response
+        if not (self.user and json.id == self.user.id):
+            return NOT_LOGGED_IN
 
     def text_handler(self, json: Json):
-        recipient = json.recipient
+        if not (self.user and json.id == self.user.id):
+            return NOT_LOGGED_IN
 
+        recipient = json.recipient
         user = Cryptic.USERS.get(recipient)
+
         if user:
             client = self.server.clients_map.get(recipient)
             if client:
@@ -145,14 +153,22 @@ class CrypticHandler(ClientHandler):
             else:
                 user.add_json(json)
 
-        return Json(recipient=json.recipient, sender=json.sender, sent=True)
+            return Json(
+                recipient=json.recipient,
+                sender=json.sender,
+                sent=True,
+                text_id=json.text_id,
+            )
 
-    def receive_json(self, json: Json):
-        try:
-            if not self.send_json(json):
-                self.user.add_json(json)
-        except Exception as e:
-            LOGGER.debug(f" {e} : receive_json")
+    def add_recipient_handler(self, json: Json):
+        if not (self.user and json.id == self.user.id):
+            return NOT_LOGGED_IN
+
+        recipient = json.recipient
+        if recipient:
+            user = Cryptic.USERS.get(recipient)
+            if user:
+                return Json(id=user.id, avatar=user.avatar, response=ADDED)
 
 
 class CrypticServer(Server):

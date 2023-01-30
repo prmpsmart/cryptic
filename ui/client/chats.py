@@ -1,4 +1,4 @@
-from .recpients import *
+from .recipients import *
 
 
 class ChatItem(StatusItem, VFrame):
