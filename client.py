@@ -13,21 +13,27 @@ class Chat:
 
     @property
     def isMe(self):
-        return self.cc.id == self.json.sender
+        return self.cc.id == self.json.recipient
 
     def __getattr__(self, attr: str):
-        if attr in self.__dict__.keys():
-            return self.__dict__.get(attr)
+        if attr in self.__dict__:
+            return self.__dict__[attr]
         else:
             return self.json[attr]
+
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        return self.__dict__.update(state)
 
 
 class Recipient:
     def __init__(self, id: str, avatar: str = "") -> None:
         self.id = id
         self.avatar = avatar
-        self.invalid = False
-        self.chats: list[Chat] = []
+        self.valid = False
+        self.chats: dict[int, Chat] = {}
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.id})"
@@ -35,21 +41,31 @@ class Recipient:
     @property
     def last_chat(self):
         if self.chats:
-            return self.chats[-1]
+            l = list(self.chats.keys())
+            print(l, self.chats)
+            l = max(l)
+            return self.chats[l]
 
     @property
     def unreads(self):
-        uns = filter(lambda k: k.recipient == self.id and not k.seen, self.chats)
+        uns = filter(lambda k: k.id == self.id and not k.seen, self.chats.values())
         return len(list(uns))
 
     def add_chat(self, json: Json):
-        self.chats.append(Chat(self, json))
+        if time := json.time:
+            self.chats[time] = Chat(self, json)
 
 
 class CrypticClientUser(CrypticUser):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.recipients: dict[str, Recipient] = {}
+        self.unsents: list[Json] = []
+
+    # def __setstate__(self, state):
+    #     self.__dict__.update(state)
+    #     # self.new_recipients_chats: list[Json] = []
+    #     del self.new_recipients_chats
 
 
 class CrypticClientData(Data):
@@ -104,8 +120,9 @@ class CrypticClient(Client):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.add_receiver("signin", self.signin_response)
-        self.add_receiver("add_recipient", self.add_recipient_response)
+        self.add_receiver("signin", self.signin_handler)
+        self.add_receiver("add_recipient", self.add_recipient_handler)
+        self.add_receiver("text", self.text_handler)
         self.signin_args = ()
         self.signed_in = False
 
@@ -138,7 +155,7 @@ class CrypticClient(Client):
         self.signin_args = id, key
         self.send_action(action="signin", id=id, key=key)
 
-    def signin_response(self, json: Json):
+    def signin_handler(self, json: Json):
         if self.signin_args:
             if json.response == LOGGED_IN:
 
@@ -156,21 +173,66 @@ class CrypticClient(Client):
                         user.avatar = json.avatar
 
                 self.signin_args = ()
+                self.validate_recipients()
+                self.send_user_jsons()
                 self.DATA.save_data()
 
     def signup(self, id: str, key: int):
         self.send_action(action="signup", id=id, key=key)
 
+    def validate_recipients(self):
+        self.send_user_action(
+            "validate_recipients",
+            recipients=[key for key in self.DATA.USER.recipients],
+        )
+
+    def validate_recipients_handler(self, json: Json):
+        response = json.response
+        for validity in response:
+            recipient, valid = validity
+            if recipient := self.DATA.USER.recipients.get(recipient):
+                recipient.valid = valid
+
+    def send_user_jsons(self):
+        if user := self.DATA.user():
+            jsons = list(user.unsents)
+            for index, json in enumerate(jsons):
+                if self.send_json(json):
+                    del user.unsents[index]
+
     def edit_profile(self, **kwargs):
         self.send_user_action("edit_profile", **kwargs)
 
-    def text(self, **kwargs):
-        self.send_user_action("text", **kwargs)
+    def text(self, json: Json):
+        json.action = "text"
+        if self.connected:
+            self.send_json(json)
+        elif user := self.DATA.user():
+            user.unsents.append(json)
+
+    def text_handler(self, json: Json):
+        user = self.DATA.user()
+
+        if user:
+            id = json.id
+            recipient = json.recipient
+            time = json.time
+
+            if id == user.id:  # user is the sender
+                if recipient := user.recipients.get(recipient):
+                    if chat := recipient.chats.get(time):
+                        chat.sent = True
+                        self.DATA.save_data()
+
+            elif recipient == user.id:  # user is the recipient
+                if recipient := user.recipients.get(id):
+                    recipient.add_chat(json)
+                    self.DATA.save_data()
 
     def add_recipient(self, id: str):
         self.send_user_action("add_recipient", recipient=id)
 
-    def add_recipient_response(self, json: Json):
+    def add_recipient_handler(self, json: Json):
         if (user := self.DATA.user()) and (json.response == ADDED):
             recipient = Recipient(json.id, json.avatar)
             user.recipients[json.id] = recipient

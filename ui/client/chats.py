@@ -7,6 +7,9 @@ class ChatItem(StatusItem, VFrame):
         StatusItem.__init__(self)
         self.chats_list = chats_list
 
+        if not chat.sent:
+            self.chats_list.room_view.home.textSignal.connect(self.on_text)
+
         self.chat = chat
 
         lay = self.layout()
@@ -47,6 +50,14 @@ class ChatItem(StatusItem, VFrame):
 
         chats_list.resized.connect(self.on_chats_list_resized)
 
+    def on_text(self, json: Json):
+        same_recipient = json.recipient == self.chat.recipient
+        same_time = json.time == self.chat.time
+        same_id = json.id == self.chat.id
+
+        if same_recipient and same_time and same_id:
+            self.update_status(True)
+
     def on_chats_list_resized(self):
         width = self.chats_list._widget.width() * 0.8
         self.setMaximumWidth(width)
@@ -83,23 +94,15 @@ class ChatsList(SearchableList):
         self.widgetLayout().addItem(self.spacerItem)
 
     def add_chat(self, chat: Chat):
-        self.addItem(ChatItem(self, chat))
-
+        self.addItem(
+            ChatItem(self, chat),
+            Qt.AlignBottom | (Qt.AlignRight if chat.isMe else Qt.AlignLeft),
+        )
         QTimer.singleShot(100, lambda: self.scroll_down(0, self.maximumHeight()))
 
     def resizeEvent(self, arg__1: PySide6.QtGui.QResizeEvent) -> None:
         self._widget.setMaximumWidth(self.width())
         self.resized.emit()
-
-    def fill(self, items: list[ChatItem]):
-        items = self.arrange_items(items)
-
-        for item in items:
-            self.widgetLayout().addWidget(
-                item,
-                1,
-                Qt.AlignBottom | (Qt.AlignRight if item.chat.isMe else Qt.AlignLeft),
-            )
 
 
 class ChatsView(VFrame, Shadow):

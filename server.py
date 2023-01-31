@@ -41,8 +41,8 @@ class CrypticHandler(ClientHandler):
             action_handler = getattr(self, f"{action}_handler", None)
 
             if action_handler:
+                response = ""
                 if action not in ["signin", "signup"]:
-                    response = "Invalid ID"
                     if json.id == self.user.id:
                         response = action_handler(json)
                 else:
@@ -57,7 +57,9 @@ class CrypticHandler(ClientHandler):
                 else:
                     response_json.response = response
 
-                p = self.send_json(response_json)
+                print(response_json)
+
+                self.send_json(response_json)
 
                 if action == "signin" and response_json.response == LOGGED_IN:
                     self.send_user_jsons()
@@ -155,20 +157,33 @@ class CrypticHandler(ClientHandler):
 
             return Json(
                 recipient=json.recipient,
-                sender=json.sender,
+                id=json.id,
                 sent=True,
-                text_id=json.text_id,
+                time=json.time,
             )
+
+    def validate_recipients_handler(self, json: Json):
+        print(json)
+        recipients = json.recipients
+        validations: list[tuple[str, bool]] = []
+        for recipient in recipients:
+            validations.append((recipient, recipient in Cryptic.USERS))
+        return validations
 
     def add_recipient_handler(self, json: Json):
         if not (self.user and json.id == self.user.id):
             return NOT_LOGGED_IN
 
-        recipient = json.recipient
-        if recipient:
-            user = Cryptic.USERS.get(recipient)
-            if user:
-                return Json(id=user.id, avatar=user.avatar, response=ADDED)
+        if recipient := Cryptic.USERS.get(json.recipient):
+            recipient_json = Json(
+                id=self.user.id, avatar=self.user.avatar, response=ADDED
+            )
+            if recipient_client := self.server.clients_map.get(recipient.id):
+                recipient_client.send_json(recipient_json)
+            else:
+                recipient.add_json(recipient_json)
+
+            return Json(id=recipient.id, avatar=recipient.avatar, response=ADDED)
 
 
 class CrypticServer(Server):

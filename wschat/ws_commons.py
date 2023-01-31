@@ -44,6 +44,12 @@ class Json(dict):
     def __getattr__(self, attr):
         return self.get(attr)
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        return self.__dict__.update(state)
+
     def __setattr__(self, attr, value):
         self[attr] = value
 

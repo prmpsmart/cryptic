@@ -72,6 +72,8 @@ class RecipientItem(Button, StatusItem):
         self.text_label = Label(objectName="text")
         bottom_row.addWidget(self.text_label)
 
+        bottom_row.addStretch()
+
         bottom_row.addWidget(self.status, 0, Qt.AlignRight)
 
         self.unreads = AlignLabel(objectName="unreads")
@@ -96,7 +98,7 @@ class RecipientItem(Button, StatusItem):
 
     def load(self):
         self.id.setText(self.recipient.id)
-        if self.recipient.invalid:
+        if not self.recipient.valid:
             self.setObjectName("invalid")
 
         if last_chat := self.recipient.last_chat:
@@ -131,7 +133,7 @@ class RecipientItem(Button, StatusItem):
 
         searchables = [
             self.recipient.id,
-            *[chat.text for chat in self.recipient.chats],
+            *[chat.text for chat in self.recipient.chats.values()],
         ]
 
         for searchable in searchables:
@@ -193,7 +195,7 @@ class RecipientsView(VFrame, Shadow):
 
         self.recipients_list = RecipientsList()
         lay.addWidget(self.recipients_list)
-        self.search_recipient.textEdited.connect(self.recipients_list.search)
+        self.search_recipient.textChanged.connect(self.recipients_list.search)
 
         self.recipients = []
 
@@ -204,6 +206,9 @@ class RecipientsView(VFrame, Shadow):
         return self.home.user
 
     def fillRecipients(self):
+        if not self.user:
+            return
+
         items: SearchableItems = []
 
         for id, recipient in self.user.recipients.items():

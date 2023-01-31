@@ -191,8 +191,7 @@ Header {{
 
 Header Label#id {{
     font-size: 25px;
-    color: {theme.one};
-    color: black;
+    color: {theme.six};
 }}
 
 IconTextButton {{
@@ -218,12 +217,10 @@ ChatSearchDialog LineEdit {{
     border-radius: 5px;
 }}
 
-
 Footer {{
     background: {theme.three};
     border-bottom-left-radius: 5px;
 }}
-
 
 TextInput {{
     border: none;
@@ -247,7 +244,6 @@ ChatItem#left {{
     border: 1px solid {theme.five};
     background: {theme.four};
 }}
-
 
 SideMenu VFrame TextButton {{
     background: {theme.two};

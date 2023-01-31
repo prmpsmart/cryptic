@@ -39,7 +39,9 @@ class Header(HF):
 
         self.chat_search_dialog: ChatSearchDialog = None
 
-        self.avatar = AvatarButton(mask=45, icon=":user", clickable=False, iconColor=Qt.white)
+        self.avatar = AvatarButton(
+            mask=45, icon=":user", clickable=False, iconColor=Qt.white
+        )
         lay.addWidget(self.avatar)
 
         col = QVBoxLayout()
@@ -60,14 +62,20 @@ class Header(HF):
         row.addStretch()
 
         self.notification = IconTextButton(
-            icon=":bell-off", checkable=True, iconSize=60, tip="Notification", iconColor=Qt.white
+            icon=":bell-off",
+            checkable=True,
+            iconSize=60,
+            tip="Notification",
+            iconColor=Qt.white,
         )
         self.notification.toggle()
         self.notification.toggled.connect(self.toggle_notification)
         row.addWidget(self.notification)
         addShadow(self.notification)
 
-        search = IconTextButton(icon=":search", iconSize=60, tip="Search", iconColor=Qt.white)
+        search = IconTextButton(
+            icon=":search", iconSize=60, tip="Search", iconColor=Qt.white
+        )
         search.clicked.connect(self.toggle_chat_search_dialog)
         row.addWidget(search)
         addShadow(search)
@@ -113,11 +121,26 @@ class Footer(HF):
         addShadow(send)
 
     def on_send(self):
-        if text := self.text_input.text:
-            chat = R[0].chats[0]
-            chat.text = text
-            self.room_view.chats_list.add_chat(chat)
-            self.text_input.clear()
+        recipient_item = self.room_view.recipient_item
+        if recipient_item:
+            recipient = recipient_item.recipient
+            if text := self.text_input.text:
+                json = Json(
+                    recipient=recipient.id,
+                    time=TIME(),
+                    id=self.room_view.home.user.id,
+                    text=text,
+                )
+                recipient.add_chat(json)
+                chat = recipient.chats[json.time]
+                self.room_view.chats_list.add_chat(chat)
+                self.room_view.home.client.text(json)
+            else:
+                QMessageBox.information(self, "Text Input", "Input text first.")
+        else:
+            QMessageBox.information(self, "Choose Recipient", "Choose recipient first.")
+
+        self.text_input.clear()
 
     def showEvent(self, event: PySide6.QtGui.QShowEvent) -> None:
         self.text_input.setTextInputSize()
@@ -159,9 +182,11 @@ class RoomView(VFrame):
         self.recipient_item = recipient_item
         self.header.load()
 
-        chats = recipient_item.recipient.chats
+        times = list(recipient_item.recipient.chats.keys())
+        times.sort()
 
         self.chats_list.deleteItems()
 
-        for chat in chats:
+        for time in times:
+            chat = recipient_item.recipient.chats[time]
             self.chats_list.add_chat(chat)
