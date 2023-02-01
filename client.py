@@ -38,11 +38,14 @@ class Recipient:
     def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.id})"
 
+    def __getstate__(self):
+        self.valid = False
+        return self.__dict__
+
     @property
     def last_chat(self):
         if self.chats:
             l = list(self.chats.keys())
-            print(l, self.chats)
             l = max(l)
             return self.chats[l]
 
@@ -61,11 +64,6 @@ class CrypticClientUser(CrypticUser):
         super().__init__(*args, **kwargs)
         self.recipients: dict[str, Recipient] = {}
         self.unsents: list[Json] = []
-
-    # def __setstate__(self, state):
-    #     self.__dict__.update(state)
-    #     # self.new_recipients_chats: list[Json] = []
-    #     del self.new_recipients_chats
 
 
 class CrypticClientData(Data):
@@ -123,6 +121,7 @@ class CrypticClient(Client):
         self.add_receiver("signin", self.signin_handler)
         self.add_receiver("add_recipient", self.add_recipient_handler)
         self.add_receiver("text", self.text_handler)
+        self.add_receiver("validate_recipients", self.validate_recipients_handler)
         self.signin_args = ()
         self.signed_in = False
 
@@ -187,9 +186,9 @@ class CrypticClient(Client):
         )
 
     def validate_recipients_handler(self, json: Json):
-        response = json.response
-        for validity in response:
-            recipient, valid = validity
+        validations = json.validations
+        for validation in validations:
+            recipient, valid = validation
             if recipient := self.DATA.USER.recipients.get(recipient):
                 recipient.valid = valid
 
@@ -235,6 +234,7 @@ class CrypticClient(Client):
     def add_recipient_handler(self, json: Json):
         if (user := self.DATA.user()) and (json.response == ADDED):
             recipient = Recipient(json.id, json.avatar)
+            recipient.valid = json.valid
             user.recipients[json.id] = recipient
             self.DATA.save_data()
 

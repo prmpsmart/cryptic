@@ -7,6 +7,7 @@ class CrypticHome(HFrame):
     signupSignal = Signal(Json)
     edit_profileSignal = Signal(Json)
     add_recipientSignal = Signal(Json)
+    validate_recipientsSignal = Signal(Json)
     textSignal = Signal(Json)
 
     def __init__(self, app: QApplication, **kwargs):
@@ -21,6 +22,7 @@ class CrypticHome(HFrame):
             self.text,
             self.edit_profile,
             self.add_recipient,
+            self.validate_recipients,
         ]:
             self.client.add_receiver(receiver.__name__, receiver)
 
@@ -66,6 +68,9 @@ class CrypticHome(HFrame):
 
     def add_recipient(self, json: Json):
         self.add_recipientSignal.emit(json)
+
+    def validate_recipients(self, json: Json):
+        self.validate_recipientsSignal.emit(json)
 
     def recipient_item_selected(self, item: RecipientItem):
         self.room_view.recipient_item_selected(item)

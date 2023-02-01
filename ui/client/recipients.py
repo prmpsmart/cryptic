@@ -98,8 +98,12 @@ class RecipientItem(Button, StatusItem):
 
     def load(self):
         self.id.setText(self.recipient.id)
+
+        valid = ""
         if not self.recipient.valid:
-            self.setObjectName("invalid")
+            valid = "in"
+
+        self.setObjectName(f"{valid}valid")
 
         if last_chat := self.recipient.last_chat:
             self.update_time(last_chat.time)
@@ -165,7 +169,9 @@ class RecipientsView(VFrame, Shadow):
         self.home = home
         self.client: CrypticUIClient = home.client
 
-        self.home.add_recipientSignal.connect(self.add_recipient_response)
+        self.home.add_recipientSignal.connect(self.add_recipient_handler)
+        self.home.validate_recipientsSignal.connect(self.validate_recipients_handler)
+        self.home.textSignal.connect(self.text_handler)
 
         self.w = 300
         self.setMinimumWidth(self.w)
@@ -209,6 +215,8 @@ class RecipientsView(VFrame, Shadow):
         if not self.user:
             return
 
+        self.recipients_list.deleteItems()
+
         items: SearchableItems = []
 
         for id, recipient in self.user.recipients.items():
@@ -247,7 +255,19 @@ class RecipientsView(VFrame, Shadow):
         else:
             QMessageBox.information(self, "Add Recipient", "No Signed Up User.")
 
-    def add_recipient_response(self, json: Json):
+    def add_recipient_handler(self, json: Json):
         QMessageBox.information(self, "Add Recipient", f"'{json.id}' {json.response}")
         if json.response == ADDED:
             self.fillRecipients()
+
+    def validate_recipients_handler(self, json: Json):
+        for item in self.recipients_list.items:
+            item.load()
+            print(item.objectName())
+
+        app = self.home.app
+        app.update_theme(app.theme)
+
+    def text_handler(self, json: Json):
+        for items in self.recipients_list.items:
+            items.load()

@@ -1,3 +1,4 @@
+import threading
 from wschat.ws_server import *
 from commons import *
 
@@ -7,6 +8,7 @@ class CrypticServerUser(CrypticUser):
         super().__init__(*args, **kwargs)
 
         self.jsons: list[Json] = []
+        self.validated_recipients: list[str] = []
 
     def add_json(self, json: Json):
         self.jsons.append(json)
@@ -56,8 +58,6 @@ class CrypticHandler(ClientHandler):
                     response_json.update(response)
                 else:
                     response_json.response = response
-
-                print(response_json)
 
                 self.send_json(response_json)
 
@@ -149,7 +149,7 @@ class CrypticHandler(ClientHandler):
         user = Cryptic.USERS.get(recipient)
 
         if user:
-            client = self.server.clients_map.get(recipient)
+            client: CrypticHandler = self.server.clients_map.get(recipient)
             if client:
                 client.receive_json(json)
             else:
@@ -163,12 +163,15 @@ class CrypticHandler(ClientHandler):
             )
 
     def validate_recipients_handler(self, json: Json):
-        print(json)
         recipients = json.recipients
+        self.user.validated_recipients = recipients
+        threading.Thread(target=self.broadcast).start()
+
         validations: list[tuple[str, bool]] = []
         for recipient in recipients:
-            validations.append((recipient, recipient in Cryptic.USERS))
-        return validations
+            validations.append((recipient, recipient in self.server.clients_map))
+
+        return Json(validations=validations)
 
     def add_recipient_handler(self, json: Json):
         if not (self.user and json.id == self.user.id):
@@ -183,8 +186,37 @@ class CrypticHandler(ClientHandler):
             else:
                 recipient.add_json(recipient_json)
 
-            return Json(id=recipient.id, avatar=recipient.avatar, response=ADDED)
+            return Json(id=recipient.id, avatar=recipient.avatar, response=ADDED, valid=recipient.id in self.server.clients_map)
+
+    def broadcast(self):
+        vr = self.user.validated_recipients
+        if vr:
+            for recipient in vr:
+                if recipient_client := self.server.clients_map.get(recipient):
+                    recipient_client: CrypticHandler
+                    recipient_client.send_json(
+                        Json(
+                            action="validate_recipients",
+                            validations=[(self.user.id, True)],
+                        )
+                    )
 
 
 class CrypticServer(Server):
     Handler = CrypticHandler
+
+    def on_client_left(self, client: CrypticHandler):
+        super().on_client_left(client)
+
+        user = client.user
+
+        if user and user.validated_recipients:
+            for recipient in user.validated_recipients:
+                if recipient_client := self.clients_map.get(recipient):
+                    recipient_client: CrypticHandler
+                    recipient_client.send_json(
+                        Json(
+                            action="validate_recipients",
+                            validations=[(user.id, False)],
+                        )
+                    )

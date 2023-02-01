@@ -227,6 +227,7 @@ class SideMenu(Expandable, VFrame, Shadow):
         if user := self.home.user:
             self.setSign(user.id, user.key)
         else:
+            self.setSign("mimi", "prmp")
             self.sign.setChecked(True)
 
         if self.client.URI:

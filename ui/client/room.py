@@ -70,6 +70,7 @@ class Header(HF):
         )
         self.notification.toggle()
         self.notification.toggled.connect(self.toggle_notification)
+        self.notification.clicked.connect(self.delete_recipient)
         row.addWidget(self.notification)
         addShadow(self.notification)
 
@@ -81,13 +82,29 @@ class Header(HF):
         addShadow(search)
 
     def load(self):
-        # return
+        icon = id = ""
         if recipient_item := self.room_view.recipient_item:
             recipient = recipient_item.recipient
+            id = recipient.id
             if recipient.avatar:
-                self.avatar.setIcon(recipient_item.avatar.icon())
+                icon = recipient_item.avatar.icon()
 
-            self.id.setText(recipient.id)
+        if icon:
+            self.avatar.setIcon(icon)
+        self.id.setText(id)
+
+    def delete_recipient(self):
+        if recipient_item := self.room_view.recipient_item:
+            user: CrypticClientUser = self.room_view.home.user
+
+            recipient = recipient_item.recipient
+            del user.recipients[recipient.id]
+
+            self.room_view.recipient_item = None
+            self.load()
+            self.room_view.home.recipients_view.fillRecipients()
+            self.room_view.chats_list.deleteItems()
+
 
     def toggle_notification(self, toggled: bool):
         self.notification.setIcon(":bell-off" if toggled else ":bell")
@@ -165,7 +182,6 @@ class RoomView(VFrame):
 
         self.chats_list = ChatsList(self)
         lay.addWidget(self.chats_list)
-        # lay.addStretch()
 
         self.footer = Footer(self)
         lay.addWidget(self.footer)
