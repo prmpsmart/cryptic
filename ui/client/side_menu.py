@@ -1,9 +1,11 @@
+from xml.dom.minidom import Attr
 from .commons import *
 
 
 class Detail(VFrame):
-    def __init__(self, title: str, holder: str = "", hide: bool = False):
+    def __init__(self, command, title: str, holder: str = "", hide: bool = False):
         super().__init__()
+        self.command = command
 
         lay = self.layout()
         m = 5
@@ -56,7 +58,7 @@ class Detail(VFrame):
         self.action.setToolTip(tip)
 
         if not toggle:
-            attr = self.title.text().lower().replace(" :", "")
+            self.command(self.valueEdit.text())
 
     def toggle_eye(self, toggle: bool):
         icon = self.eye_off_icon if toggle else self.eye_icon
@@ -114,10 +116,12 @@ class SideMenu(Expandable, VFrame, Shadow):
         self.image = ImageLabel(default=QSvgPixmap(":user-2", Qt.white).toImage())
         profile_lay.addWidget(self.image)
 
-        self.id = Detail(title="ID :", holder="ID of this client.")
+        self.id = Detail(self.change_id, title="ID :", holder="ID of this client.")
         profile_lay.addWidget(self.id)
 
-        self.key = Detail(title="Key :", holder="Key of this client.", hide=True)
+        self.key = Detail(
+            self.change_key, title="Key :", holder="Key of this client.", hide=True
+        )
         profile_lay.addWidget(self.key)
 
         hlay = QHBoxLayout()
@@ -286,6 +290,22 @@ class SideMenu(Expandable, VFrame, Shadow):
 
     def edit_profile_receiver(self, json: Json):
         QMessageBox.information(self, "Profile Edit", json.response)
+
+    def change_id(self, id: str):
+        if (user := self.home.user) and self.client_connected:
+            if id and (id != user.id):
+                if QMessageBox.question(
+                    self, "Change ID", "Are you sure to change your id?"
+                ):
+                    self.client.edit_profile(new_id=id)
+
+    def change_key(self, key: str):
+        if (user := self.home.user) and self.client_connected:
+            if key and (key != user.key):
+                if QMessageBox.question(
+                    self, "Change key", "Are you sure to change your key?"
+                ):
+                    self.client.edit_profile(new_key=key)
 
     def signup(self):
         if id_key := self.sign_check():

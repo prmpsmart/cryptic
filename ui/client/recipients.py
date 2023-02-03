@@ -261,13 +261,15 @@ class RecipientsView(VFrame, Shadow):
             self.fillRecipients()
 
     def validate_recipients_handler(self, json: Json):
+        item: RecipientItem
         for item in self.recipients_list.items:
             item.load()
-            print(item.objectName())
 
         app = self.home.app
         app.update_theme(app.theme)
 
     def text_handler(self, json: Json):
-        for items in self.recipients_list.items:
-            items.load()
+        item: RecipientItem
+        for item in self.recipients_list.items:
+            if item.recipient.id in (json.id, json.recipient):
+                item.load()

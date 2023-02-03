@@ -105,7 +105,6 @@ class Header(HF):
             self.room_view.home.recipients_view.fillRecipients()
             self.room_view.chats_list.deleteItems()
 
-
     def toggle_notification(self, toggled: bool):
         self.notification.setIcon(":bell-off" if toggled else ":bell")
 
@@ -171,6 +170,8 @@ class RoomView(VFrame):
         self.recipient_item: RecipientItem = None
         self.setMinimumWidth(400)
 
+        self.home.textSignal.connect(self.text_handler)
+
         lay = self.layout()
         lay.setSpacing(0)
 
@@ -186,6 +187,8 @@ class RoomView(VFrame):
         self.footer = Footer(self)
         lay.addWidget(self.footer)
 
+        self.chats_time: list[int] = []
+
     @property
     def recipient(self) -> Recipient:
         if self.recipient_item:
@@ -194,6 +197,8 @@ class RoomView(VFrame):
     def recipient_item_selected(self, recipient_item: RecipientItem):
         if recipient_item == self.recipient_item:
             return
+
+        self.chats_time.clear()
 
         self.recipient_item = recipient_item
         self.header.load()
@@ -204,5 +209,26 @@ class RoomView(VFrame):
         self.chats_list.deleteItems()
 
         for time in times:
+            self.chats_time.append(time)
             chat = recipient_item.recipient.chats[time]
             self.chats_list.add_chat(chat)
+
+    def text_handler(self, json: Json):
+        if (
+            self.recipient
+            and (user := self.home.user)
+            and (recipient := json.recipient)
+            and (id := json.id)
+            and (time := json.time)
+        ):
+            ids = (recipient, id)
+            if (
+                (user.id in ids)
+                and (self.recipient.id in ids)
+                and (time not in self.chats_time)
+            ):
+
+                chat = self.recipient.chats[time]
+                self.chats_list.add_chat(chat)
+
+        # self.chats_list.add_chat(chat)
