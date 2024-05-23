@@ -84,7 +84,7 @@ class ChatsList(SearchableList):
         self.widgetLayout().setSpacing(3)
 
     def add_chat(self, chat: Chat):
-        self.addItem(
+        self.add(
             ChatItem(self, chat),
             0,
             (Qt.AlignRight if chat.isMe else Qt.AlignLeft),

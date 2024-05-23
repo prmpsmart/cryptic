@@ -38,7 +38,7 @@ class CrypticHandler(ClientHandler):
         except Json.JSONDecodeError as jde:
             LOGGER.debug(f" Message Error, {data}")
 
-        if json and json.action:
+        if json and json.action and self.user:
             action = json.action.lower()
             action_handler = getattr(self, f"{action}_handler", None)
 

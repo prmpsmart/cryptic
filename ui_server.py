@@ -1,7 +1,3 @@
-import site
-
-site.addsitedir("../prmp_qt")
-
 from ui.server import *
 
 IP = "127.0.0.1"
