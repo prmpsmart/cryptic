@@ -164,7 +164,7 @@ class RecipientsList(SearchableList):
 class RecipientsView(VFrame, Shadow):
     def __init__(self, home: HFrame, **kwargs):
         VFrame.__init__(self, **kwargs)
-        # Shadow.__init__(self)
+        Shadow.__init__(self)
 
         self.home = home
         self.client: CrypticUIClient = home.client

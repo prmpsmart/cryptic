@@ -157,7 +157,6 @@ class CrypticClient(Client):
     def signin_handler(self, json: Json):
         if self.signin_args:
             if json.response == LOGGED_IN:
-
                 self.signed_in = True
                 user = self.DATA.user()
 

@@ -63,7 +63,7 @@ class ChatItem(StatusItem, VFrame):
         width = self.chats_list._widget.width() * 0.8
         self.setMaximumWidth(width)
 
-    def showEvent(self, event: PySide6.QtGui.QShowEvent) -> None:
+    def showEvent(self, event: QShowEvent) -> None:
         # self.on_chats_list_resized()
         if not self.chat.seen:
             self.chats_list.room_view.home.recipients_view.text_handler(self.chat.json)
@@ -91,6 +91,6 @@ class ChatsList(SearchableList):
         )
         QTimer.singleShot(100, lambda: self.scroll_down(0, self.maximumHeight()))
 
-    def resizeEvent(self, arg__1: PySide6.QtGui.QResizeEvent) -> None:
+    def resizeEvent(self, arg__1: QResizeEvent) -> None:
         self._widget.setMaximumWidth(self.width())
         self.resized.emit()

@@ -209,7 +209,7 @@ class CrypticHandler(ClientHandler):
     def check_login(self, json: Json):
         return self.user and json.id == self.user.id
 
-    def broadcast(self, id:str=''):
+    def broadcast(self, id: str = ""):
         if self.user and (vr := self.user.validated_recipients):
             for recipient in vr:
                 if recipient_client := self.server.clients_map.get(recipient):
@@ -217,7 +217,12 @@ class CrypticHandler(ClientHandler):
                     recipient_client.send_json(
                         Json(
                             action="validate_recipients",
-                            validations=[(id or self.user.id, self.user.id in self.server.clients_map)],
+                            validations=[
+                                (
+                                    id or self.user.id,
+                                    self.user.id in self.server.clients_map,
+                                )
+                            ],
                         )
                     )
 

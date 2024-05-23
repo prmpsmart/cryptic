@@ -1,6 +1,3 @@
 {
-    "python.pythonPath": "C:\\Python\\Python39\\python.exe",
-    "python.analysis.extraPaths": [
-        "../prmp_qt",
-    ],
+  "python.analysis.extraPaths": ["../prmp_qt-master/"]
 }

@@ -224,11 +224,14 @@ class CrypticServerHome(VFrame):
         if toggle:
             if not self.server:
                 self.server = UiServer(self.server_address, log_level=logging.INFO)
-            self.server.serve_forever()
+                self.server.serve_forever()
 
         else:
-            if self.server.started:
-                self.server.close()
+            if self.server and self.server.started:
+                try:
+                    self.server.close()
+                except:
+                    ...
                 self.server = None
 
         self.update_server_button(toggle)

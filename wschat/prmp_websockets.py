@@ -302,7 +302,6 @@ class PRMP_WebsocketProtocol:
     def _parseMessage(self, byte):
         # read in the header
         if self.state == HEADER_B1:
-
             self.fin = byte & FIN
             self.opcode = byte & OPCODE
             self.state = HEADER_B2
@@ -386,7 +385,6 @@ class PRMP_WebsocketProtocol:
                         self.state = PAYLOAD
 
         elif self.state == LENGTH_LONG:
-
             self.length_array.append(byte)
 
             if len(self.length_array) > 8:
@@ -703,7 +701,6 @@ class PRMP_WebSocketHandler(PRMP_WebsocketProtocol, socketserver.StreamRequestHa
 
 
 class PRMP_WebSocketServer(socketserver.ThreadingTCPServer):
-
     allow_reuse_address = True
     request_queue_size = 10
     Handler = PRMP_WebSocketHandler
@@ -993,7 +990,6 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
                 break
 
             if not status:
-
                 status_info = line.split(" ", 2)
                 status = int(status_info[1])
                 if len(status_info) > 2:
@@ -1212,7 +1208,6 @@ class PRMP_WebSocketClient(PRMP_WebsocketProtocol):
         resource="",
         options: dict = {},
     ):
-
         if url:
             address, port, resource, secure = self.parse_url(url)
         else:

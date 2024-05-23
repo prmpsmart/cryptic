@@ -1,3 +1,7 @@
+import os
+
+os.sys.path.append(r"C:\Users\USER\Desktop\Workspace\PRMPSmart\prmp_qt-master")
+
 from prmp_qt import *
 from .theme import *
 

@@ -158,7 +158,7 @@ class Footer(HF):
 
         self.text_input.clear()
 
-    def showEvent(self, event: PySide6.QtGui.QShowEvent) -> None:
+    def showEvent(self, event: QShowEvent) -> None:
         self.text_input.setTextInputSize()
 
 
@@ -227,7 +227,6 @@ class RoomView(VFrame):
                 and (self.recipient.id in ids)
                 and (time not in self.chats_time)
             ):
-
                 chat = self.recipient.chats[time]
                 self.chats_list.add_chat(chat)
 
